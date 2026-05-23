@@ -72,4 +72,8 @@ public class Policy extends AuditableEntity {
     @OneToMany(mappedBy = "policy", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     @Builder.Default
     private List<Risk> risks = new ArrayList<>();
+
+    @OneToMany(mappedBy = "policy", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @Builder.Default
+    private List<Renewal> renewals = new ArrayList<>();
 }

@@ -7,9 +7,11 @@ import com.segurosbolivar.polizas.dto.response.RiskResponse;
 import com.segurosbolivar.polizas.exception.BusinessException;
 import com.segurosbolivar.polizas.exception.ResourceNotFoundException;
 import com.segurosbolivar.polizas.model.Policy;
+import com.segurosbolivar.polizas.model.Renewal;
 import com.segurosbolivar.polizas.model.catalog.PolicyState;
 import com.segurosbolivar.polizas.model.catalog.RiskState;
 import com.segurosbolivar.polizas.repository.PolicyRepository;
+import com.segurosbolivar.polizas.repository.RenewalRepository;
 import com.segurosbolivar.polizas.repository.catalog.PolicyStateRepository;
 import com.segurosbolivar.polizas.repository.catalog.RiskStateRepository;
 import com.segurosbolivar.polizas.service.CoreMockService;
@@ -39,6 +41,7 @@ public class PolicyServiceImpl implements PolicyService {
     private final PolicyRepository policyRepository;
     private final PolicyStateRepository policyStateRepository;
     private final RiskStateRepository riskStateRepository;
+    private final RenewalRepository renewalRepository;
     private final CoreMockService coreMockService;
     private final PolicyValidationStrategy renovarPolicyValidation;
 
@@ -46,11 +49,13 @@ public class PolicyServiceImpl implements PolicyService {
             PolicyRepository policyRepository,
             PolicyStateRepository policyStateRepository,
             RiskStateRepository riskStateRepository,
+            RenewalRepository renewalRepository,
             CoreMockService coreMockService,
             @Qualifier("renovarPolicyValidation") PolicyValidationStrategy renovarPolicyValidation) {
         this.policyRepository = policyRepository;
         this.policyStateRepository = policyStateRepository;
         this.riskStateRepository = riskStateRepository;
+        this.renewalRepository = renewalRepository;
         this.coreMockService = coreMockService;
         this.renovarPolicyValidation = renovarPolicyValidation;
     }
@@ -87,6 +92,20 @@ public class PolicyServiceImpl implements PolicyService {
         policy.setState(obtenerEstadoOLanzarExcepcion(STATE_RENOVADA));
 
         Policy saved = policyRepository.save(policy);
+
+        Renewal renewal = Renewal.builder()
+                .policy(saved)
+                .canonBefore(canonBefore)
+                .canonAfter(canonAfter)
+                .premiumBefore(premiumBefore)
+                .premiumAfter(premiumAfter)
+                .ipcApplied(BigDecimal.valueOf(request.getIpc()))
+                .type("MANUAL")
+                .result("SUCCESS")
+                .coreSyncStatus("PENDING")
+                .build();
+        renewalRepository.save(renewal);
+
         notificarCore(polizaId);
 
         log.info("Póliza id={} renovada exitosamente. Nuevo canon={}", polizaId, canonAfter);

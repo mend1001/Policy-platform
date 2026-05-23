@@ -12,6 +12,7 @@ import com.segurosbolivar.polizas.model.catalog.PolicyState;
 import com.segurosbolivar.polizas.model.catalog.PolicyType;
 import com.segurosbolivar.polizas.model.catalog.RiskState;
 import com.segurosbolivar.polizas.repository.PolicyRepository;
+import com.segurosbolivar.polizas.repository.RenewalRepository;
 import com.segurosbolivar.polizas.repository.catalog.PolicyStateRepository;
 import com.segurosbolivar.polizas.repository.catalog.RiskStateRepository;
 import com.segurosbolivar.polizas.service.impl.PolicyServiceImpl;
@@ -49,6 +50,9 @@ class PolicyServiceImplTest {
     private RiskStateRepository riskStateRepository;
 
     @Mock
+    private RenewalRepository renewalRepository;
+
+    @Mock
     private CoreMockService coreMockService;
 
     private PolicyValidationStrategy renovarPolicyValidation;
@@ -59,7 +63,7 @@ class PolicyServiceImplTest {
         renovarPolicyValidation = new RenovarPolicyValidation();
         policyService = new PolicyServiceImpl(
                 policyRepository, policyStateRepository, riskStateRepository,
-                coreMockService, renovarPolicyValidation);
+                renewalRepository, coreMockService, renovarPolicyValidation);
     }
 
     @Test
