@@ -1,0 +1,33 @@
+# Maven
+target/
+*.class
+*.jar
+*.war
+
+# Spring Boot
+*.log
+application-local.yml
+
+# Claude Code — notas privadas
+CLAUDE.local.md
+CLAUDE.md
+HELP.md
+.claude
+{.claude
+
+# IDE
+.idea/
+.vscode/
+*.iml
+.project
+.classpath
+.settings/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# H2 Database
+*.db
+# Obsidian vault
+docs/
