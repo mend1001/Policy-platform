@@ -1,0 +1,325 @@
+{
+  "info": {
+    "name": "Polizas Platform — API REST",
+    "description": "Colección completa para la API de gestión de pólizas de arrendamiento. Requiere header x-api-key: 123456 en todos los endpoints.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Pólizas",
+      "item": [
+        {
+          "name": "01 — Listar todas las pólizas",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "x-api-key", "value": "{{apiKey}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/polizas",
+              "host": ["{{baseUrl}}"],
+              "path": ["polizas"]
+            }
+          }
+        },
+        {
+          "name": "02 — Listar pólizas INDIVIDUAL",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "x-api-key", "value": "{{apiKey}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/polizas?tipo=INDIVIDUAL",
+              "host": ["{{baseUrl}}"],
+              "path": ["polizas"],
+              "query": [{ "key": "tipo", "value": "INDIVIDUAL" }]
+            }
+          }
+        },
+        {
+          "name": "03 — Listar pólizas COLECTIVA",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "x-api-key", "value": "{{apiKey}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/polizas?tipo=COLECTIVA",
+              "host": ["{{baseUrl}}"],
+              "path": ["polizas"],
+              "query": [{ "key": "tipo", "value": "COLECTIVA" }]
+            }
+          }
+        },
+        {
+          "name": "04 — Listar pólizas ACTIVA",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "x-api-key", "value": "{{apiKey}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/polizas?estado=ACTIVA",
+              "host": ["{{baseUrl}}"],
+              "path": ["polizas"],
+              "query": [{ "key": "estado", "value": "ACTIVA" }]
+            }
+          }
+        },
+        {
+          "name": "05 — Listar pólizas RENOVADA",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "x-api-key", "value": "{{apiKey}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/polizas?estado=RENOVADA",
+              "host": ["{{baseUrl}}"],
+              "path": ["polizas"],
+              "query": [{ "key": "estado", "value": "RENOVADA" }]
+            }
+          }
+        },
+        {
+          "name": "06 — Listar pólizas CANCELADA",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "x-api-key", "value": "{{apiKey}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/polizas?estado=CANCELADA",
+              "host": ["{{baseUrl}}"],
+              "path": ["polizas"],
+              "query": [{ "key": "estado", "value": "CANCELADA" }]
+            }
+          }
+        },
+        {
+          "name": "07 — Listar COLECTIVA + ACTIVA (filtro combinado)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "x-api-key", "value": "{{apiKey}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/polizas?tipo=COLECTIVA&estado=ACTIVA",
+              "host": ["{{baseUrl}}"],
+              "path": ["polizas"],
+              "query": [
+                { "key": "tipo", "value": "COLECTIVA" },
+                { "key": "estado", "value": "ACTIVA" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "08 — Listar riesgos de póliza INDIVIDUAL (id=1)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "x-api-key", "value": "{{apiKey}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/polizas/1/riesgos",
+              "host": ["{{baseUrl}}"],
+              "path": ["polizas", "1", "riesgos"]
+            }
+          }
+        },
+        {
+          "name": "09 — Listar riesgos de póliza COLECTIVA (id=3)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "x-api-key", "value": "{{apiKey}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/polizas/3/riesgos",
+              "host": ["{{baseUrl}}"],
+              "path": ["polizas", "3", "riesgos"]
+            }
+          }
+        },
+        {
+          "name": "10 — Listar riesgos póliza inexistente → 404",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "x-api-key", "value": "{{apiKey}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/polizas/99/riesgos",
+              "host": ["{{baseUrl}}"],
+              "path": ["polizas", "99", "riesgos"]
+            }
+          }
+        },
+        {
+          "name": "11 — Renovar póliza activa (ipc=9%)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "x-api-key", "value": "{{apiKey}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ipc\": 0.09\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/polizas/1/renovar",
+              "host": ["{{baseUrl}}"],
+              "path": ["polizas", "1", "renovar"]
+            }
+          }
+        },
+        {
+          "name": "12 — Renovar póliza CANCELADA → 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "x-api-key", "value": "{{apiKey}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ipc\": 0.09\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/polizas/{{polizaCanceladaId}}/renovar",
+              "host": ["{{baseUrl}}"],
+              "path": ["polizas", "{{polizaCanceladaId}}", "renovar"]
+            }
+          }
+        },
+        {
+          "name": "13 — Cancelar póliza COLECTIVA con riesgos (id=3)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "x-api-key", "value": "{{apiKey}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/polizas/3/cancelar",
+              "host": ["{{baseUrl}}"],
+              "path": ["polizas", "3", "cancelar"]
+            }
+          }
+        },
+        {
+          "name": "14 — Cancelar póliza inexistente → 404",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "x-api-key", "value": "{{apiKey}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/polizas/99/cancelar",
+              "host": ["{{baseUrl}}"],
+              "path": ["polizas", "99", "cancelar"]
+            }
+          }
+        },
+        {
+          "name": "15 — Agregar riesgo a póliza COLECTIVA (id=4)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "x-api-key", "value": "{{apiKey}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"aseguradoId\": 20,\n  \"direccion\": \"Calle 100 # 9-67, Bogotá\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/polizas/4/riesgos",
+              "host": ["{{baseUrl}}"],
+              "path": ["polizas", "4", "riesgos"]
+            }
+          }
+        },
+        {
+          "name": "16 — Agregar riesgo a póliza INDIVIDUAL → 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "x-api-key", "value": "{{apiKey}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"aseguradoId\": 20,\n  \"direccion\": \"Calle 100 # 9-67, Bogotá\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/polizas/1/riesgos",
+              "host": ["{{baseUrl}}"],
+              "path": ["polizas", "1", "riesgos"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Riesgos",
+      "item": [
+        {
+          "name": "17 — Cancelar riesgo individual (id=1)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "x-api-key", "value": "{{apiKey}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/riesgos/1/cancelar",
+              "host": ["{{baseUrl}}"],
+              "path": ["riesgos", "1", "cancelar"]
+            }
+          }
+        },
+        {
+          "name": "18 — Cancelar riesgo inexistente → 404",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "x-api-key", "value": "{{apiKey}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/riesgos/99/cancelar",
+              "host": ["{{baseUrl}}"],
+              "path": ["riesgos", "99", "cancelar"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Core Mock",
+      "item": [
+        {
+          "name": "19 — Registrar evento en CORE",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "x-api-key", "value": "{{apiKey}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"evento\": \"ACTUALIZACION\",\n  \"polizaId\": 1\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/core-mock/evento",
+              "host": ["{{baseUrl}}"],
+              "path": ["core-mock", "evento"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Seguridad",
+      "item": [
+        {
+          "name": "20 — Sin x-api-key → 401",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/polizas",
+              "host": ["{{baseUrl}}"],
+              "path": ["polizas"]
+            }
+          }
+        },
+        {
+          "name": "21 — x-api-key inválido → 401",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "x-api-key", "value": "INVALID-KEY" }],
+            "url": {
+              "raw": "{{baseUrl}}/polizas",
+              "host": ["{{baseUrl}}"],
+              "path": ["polizas"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
