@@ -1,6 +1,5 @@
 package com.segurosbolivar.polizas.service.impl;
 
-import com.segurosbolivar.polizas.dto.request.CoreEventRequest;
 import com.segurosbolivar.polizas.dto.request.RenovarPolicyRequest;
 import com.segurosbolivar.polizas.dto.response.PolicyResponse;
 import com.segurosbolivar.polizas.dto.response.RiskResponse;
@@ -31,7 +30,6 @@ import java.util.UUID;
 @Service
 public class PolicyServiceImpl implements PolicyService {
 
-    private static final String EVENTO_ACTUALIZACION = "ACTUALIZACION";
     private static final String MSG_POLIZA_NO_ENCONTRADA = "Póliza no encontrada con id: ";
     private static final String STATE_RENOVADA = "RENOVADA";
     private static final String STATE_CANCELADA = "CANCELADA";
@@ -106,7 +104,7 @@ public class PolicyServiceImpl implements PolicyService {
                 .build();
         renewalRepository.save(renewal);
 
-        notificarCore(polizaId);
+        coreMockService.notifyCore(saved, "POLICY_RENEWED");
 
         log.info("Póliza id={} renovada exitosamente. Nuevo canon={}", polizaId, canonAfter);
         return PolicyResponse.from(saved);
@@ -128,7 +126,7 @@ public class PolicyServiceImpl implements PolicyService {
         policy.setState(obtenerEstadoOLanzarExcepcion(STATE_CANCELADA));
 
         Policy saved = policyRepository.save(policy);
-        notificarCore(polizaId);
+        coreMockService.notifyCore(saved, "POLICY_CANCELLED");
 
         log.info("Póliza id={} cancelada con {} riesgos cancelados", polizaId, riesgosCancelados);
         return PolicyResponse.from(saved);
@@ -164,10 +162,4 @@ public class PolicyServiceImpl implements PolicyService {
         return canon.multiply(BigDecimal.valueOf(months));
     }
 
-    private void notificarCore(UUID polizaId) {
-        coreMockService.enviarEvento(CoreEventRequest.builder()
-                .evento(EVENTO_ACTUALIZACION)
-                .polizaId(polizaId.toString())
-                .build());
-    }
 }
