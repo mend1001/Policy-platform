@@ -7,9 +7,6 @@ import com.segurosbolivar.polizas.dto.response.PolicyResponse;
 import com.segurosbolivar.polizas.dto.response.RiskResponse;
 import com.segurosbolivar.polizas.exception.BusinessException;
 import com.segurosbolivar.polizas.exception.ResourceNotFoundException;
-import com.segurosbolivar.polizas.model.enums.PolicyState;
-import com.segurosbolivar.polizas.model.enums.PolicyType;
-import com.segurosbolivar.polizas.model.enums.RiskState;
 import com.segurosbolivar.polizas.service.PolicyService;
 import com.segurosbolivar.polizas.service.RiskService;
 import org.junit.jupiter.api.BeforeEach;
@@ -25,6 +22,7 @@ import tools.jackson.databind.ObjectMapper;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -37,6 +35,14 @@ class PolicyControllerTest {
 
     private static final String API_KEY_HEADER = "x-api-key";
     private static final String API_KEY_VALUE  = "123456";
+
+    private static final UUID POLICY_ID    = UUID.fromString("550e8400-e29b-41d4-a716-446655440001");
+    private static final UUID POLICY_COL   = UUID.fromString("550e8400-e29b-41d4-a716-446655440003");
+    private static final UUID HOLDER_ID    = UUID.fromString("550e8400-e29b-41d4-a716-446655440010");
+    private static final UUID BENEFICIARY  = UUID.fromString("550e8400-e29b-41d4-a716-446655440011");
+    private static final UUID INSURED_ID   = UUID.fromString("550e8400-e29b-41d4-a716-446655440020");
+    private static final UUID RISK_ID      = UUID.fromString("550e8400-e29b-41d4-a716-446655440030");
+    private static final UUID UNKNOWN_ID   = UUID.fromString("00000000-0000-0000-0000-000000000099");
 
     @Autowired
     private MockMvc mockMvc;
@@ -65,13 +71,13 @@ class PolicyControllerTest {
         mockMvc.perform(get("/polizas")
                         .header(API_KEY_HEADER, API_KEY_VALUE))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].tipo").value("INDIVIDUAL"))
-                .andExpect(jsonPath("$[0].estado").value("ACTIVA"));
+                .andExpect(jsonPath("$[0].type").value("INDIVIDUAL"))
+                .andExpect(jsonPath("$[0].state").value("ACTIVA"));
     }
 
     @Test
     void deberiaListarPolizasFiltrandoPorTipoYEstado() throws Exception {
-        when(policyService.listarPolizas(PolicyType.COLECTIVA, PolicyState.ACTIVA))
+        when(policyService.listarPolizas("COLECTIVA", "ACTIVA"))
                 .thenReturn(List.of(polizaColectivaResponse()));
 
         mockMvc.perform(get("/polizas")
@@ -79,7 +85,7 @@ class PolicyControllerTest {
                         .param("tipo", "COLECTIVA")
                         .param("estado", "ACTIVA"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].tipo").value("COLECTIVA"));
+                .andExpect(jsonPath("$[0].type").value("COLECTIVA"));
     }
 
     @Test
@@ -90,20 +96,20 @@ class PolicyControllerTest {
 
     @Test
     void deberiaListarRiesgosDePoliza() throws Exception {
-        when(policyService.listarRiesgos(1L)).thenReturn(List.of(riskResponse()));
+        when(policyService.listarRiesgos(POLICY_ID)).thenReturn(List.of(riskResponse()));
 
-        mockMvc.perform(get("/polizas/1/riesgos")
+        mockMvc.perform(get("/polizas/" + POLICY_ID + "/riesgos")
                         .header(API_KEY_HEADER, API_KEY_VALUE))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].estado").value("ACTIVO"));
+                .andExpect(jsonPath("$[0].state").value("ACTIVO"));
     }
 
     @Test
     void deberiaRetornar404AlListarRiesgosDePolicyInexistente() throws Exception {
-        when(policyService.listarRiesgos(99L))
-                .thenThrow(new ResourceNotFoundException("Póliza no encontrada con id: 99"));
+        when(policyService.listarRiesgos(UNKNOWN_ID))
+                .thenThrow(new ResourceNotFoundException("Póliza no encontrada con id: " + UNKNOWN_ID));
 
-        mockMvc.perform(get("/polizas/99/riesgos")
+        mockMvc.perform(get("/polizas/" + UNKNOWN_ID + "/riesgos")
                         .header(API_KEY_HEADER, API_KEY_VALUE))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.error").exists());
@@ -112,27 +118,27 @@ class PolicyControllerTest {
     @Test
     void deberiaRenovarPolizaExitosamente() throws Exception {
         PolicyResponse renovada = PolicyResponse.builder()
-                .id(1L).tipo(PolicyType.INDIVIDUAL).estado(PolicyState.RENOVADA)
-                .canon(new BigDecimal("1635000.00")).prima(new BigDecimal("19620000.00"))
-                .fechaInicio(LocalDate.of(2024, 1, 1)).fechaFin(LocalDate.of(2025, 1, 1))
-                .tomadorId(1L).beneficiarioId(2L).build();
+                .id(POLICY_ID).type("INDIVIDUAL").state("RENOVADA")
+                .canon(new BigDecimal("1635000.00")).premium(new BigDecimal("19620000.00"))
+                .startDate(LocalDate.of(2024, 1, 1)).endDate(LocalDate.of(2025, 1, 1))
+                .months(12).holderId(HOLDER_ID).beneficiaryId(BENEFICIARY).build();
 
-        when(policyService.renovarPoliza(eq(1L), any(RenovarPolicyRequest.class))).thenReturn(renovada);
+        when(policyService.renovarPoliza(eq(POLICY_ID), any(RenovarPolicyRequest.class))).thenReturn(renovada);
 
-        mockMvc.perform(post("/polizas/1/renovar")
+        mockMvc.perform(post("/polizas/" + POLICY_ID + "/renovar")
                         .header(API_KEY_HEADER, API_KEY_VALUE)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(new RenovarPolicyRequest(0.09))))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.estado").value("RENOVADA"));
+                .andExpect(jsonPath("$.state").value("RENOVADA"));
     }
 
     @Test
     void deberiaRetornar400AlRenovarPolizaCancelada() throws Exception {
-        when(policyService.renovarPoliza(eq(1L), any(RenovarPolicyRequest.class)))
+        when(policyService.renovarPoliza(eq(POLICY_ID), any(RenovarPolicyRequest.class)))
                 .thenThrow(new BusinessException("No se puede renovar una póliza cancelada", HttpStatus.BAD_REQUEST));
 
-        mockMvc.perform(post("/polizas/1/renovar")
+        mockMvc.perform(post("/polizas/" + POLICY_ID + "/renovar")
                         .header(API_KEY_HEADER, API_KEY_VALUE)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(new RenovarPolicyRequest(0.09))))
@@ -143,25 +149,25 @@ class PolicyControllerTest {
     @Test
     void deberiaCancelarPolizaExitosamente() throws Exception {
         PolicyResponse cancelada = PolicyResponse.builder()
-                .id(1L).tipo(PolicyType.INDIVIDUAL).estado(PolicyState.CANCELADA)
-                .canon(new BigDecimal("1500000.00")).prima(new BigDecimal("18000000.00"))
-                .fechaInicio(LocalDate.of(2024, 1, 1)).fechaFin(LocalDate.of(2025, 1, 1))
-                .tomadorId(1L).beneficiarioId(2L).build();
+                .id(POLICY_ID).type("INDIVIDUAL").state("CANCELADA")
+                .canon(new BigDecimal("1500000.00")).premium(new BigDecimal("18000000.00"))
+                .startDate(LocalDate.of(2024, 1, 1)).endDate(LocalDate.of(2025, 1, 1))
+                .months(12).holderId(HOLDER_ID).beneficiaryId(BENEFICIARY).build();
 
-        when(policyService.cancelarPoliza(1L)).thenReturn(cancelada);
+        when(policyService.cancelarPoliza(POLICY_ID)).thenReturn(cancelada);
 
-        mockMvc.perform(post("/polizas/1/cancelar")
+        mockMvc.perform(post("/polizas/" + POLICY_ID + "/cancelar")
                         .header(API_KEY_HEADER, API_KEY_VALUE))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.estado").value("CANCELADA"));
+                .andExpect(jsonPath("$.state").value("CANCELADA"));
     }
 
     @Test
     void deberiaRetornar404AlCancelarPolizaInexistente() throws Exception {
-        when(policyService.cancelarPoliza(99L))
-                .thenThrow(new ResourceNotFoundException("Póliza no encontrada con id: 99"));
+        when(policyService.cancelarPoliza(UNKNOWN_ID))
+                .thenThrow(new ResourceNotFoundException("Póliza no encontrada con id: " + UNKNOWN_ID));
 
-        mockMvc.perform(post("/polizas/99/cancelar")
+        mockMvc.perform(post("/polizas/" + UNKNOWN_ID + "/cancelar")
                         .header(API_KEY_HEADER, API_KEY_VALUE))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.error").exists());
@@ -169,7 +175,7 @@ class PolicyControllerTest {
 
     @Test
     void deberiaRetornar400AlRenovarConIpcNulo() throws Exception {
-        mockMvc.perform(post("/polizas/1/renovar")
+        mockMvc.perform(post("/polizas/" + POLICY_ID + "/renovar")
                         .header(API_KEY_HEADER, API_KEY_VALUE)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"ipc\": null}"))
@@ -179,51 +185,51 @@ class PolicyControllerTest {
 
     @Test
     void deberiaAgregarRiesgoAPolizaColectiva() throws Exception {
-        when(riskService.agregarRiesgo(eq(3L), any(AgregarRiskRequest.class))).thenReturn(riskResponse());
+        when(riskService.agregarRiesgo(eq(POLICY_COL), any(AgregarRiskRequest.class))).thenReturn(riskResponse());
 
-        mockMvc.perform(post("/polizas/3/riesgos")
+        mockMvc.perform(post("/polizas/" + POLICY_COL + "/riesgos")
                         .header(API_KEY_HEADER, API_KEY_VALUE)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(
-                                new AgregarRiskRequest(20L, "Calle 100 # 9-67, Bogotá"))))
+                                new AgregarRiskRequest(INSURED_ID, "Calle 100 # 9-67, Bogotá"))))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.estado").value("ACTIVO"));
+                .andExpect(jsonPath("$.state").value("ACTIVO"));
     }
 
     @Test
     void deberiaRetornar400AlAgregarRiesgoAPolizaIndividual() throws Exception {
-        when(riskService.agregarRiesgo(eq(1L), any(AgregarRiskRequest.class)))
+        when(riskService.agregarRiesgo(eq(POLICY_ID), any(AgregarRiskRequest.class)))
                 .thenThrow(new BusinessException("Solo se pueden agregar riesgos a pólizas de tipo COLECTIVA",
                         HttpStatus.BAD_REQUEST));
 
-        mockMvc.perform(post("/polizas/1/riesgos")
+        mockMvc.perform(post("/polizas/" + POLICY_ID + "/riesgos")
                         .header(API_KEY_HEADER, API_KEY_VALUE)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(
-                                new AgregarRiskRequest(20L, "Calle 100 # 9-67"))))
+                                new AgregarRiskRequest(INSURED_ID, "Calle 100 # 9-67"))))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error").exists());
     }
 
     private PolicyResponse polizaResponse() {
         return PolicyResponse.builder()
-                .id(1L).tipo(PolicyType.INDIVIDUAL).estado(PolicyState.ACTIVA)
-                .canon(new BigDecimal("1500000.00")).prima(new BigDecimal("18000000.00"))
-                .fechaInicio(LocalDate.of(2024, 1, 1)).fechaFin(LocalDate.of(2025, 1, 1))
-                .tomadorId(1L).beneficiarioId(2L).build();
+                .id(POLICY_ID).type("INDIVIDUAL").state("ACTIVA")
+                .canon(new BigDecimal("1500000.00")).premium(new BigDecimal("18000000.00"))
+                .startDate(LocalDate.of(2024, 1, 1)).endDate(LocalDate.of(2025, 1, 1))
+                .months(12).holderId(HOLDER_ID).beneficiaryId(BENEFICIARY).build();
     }
 
     private PolicyResponse polizaColectivaResponse() {
         return PolicyResponse.builder()
-                .id(3L).tipo(PolicyType.COLECTIVA).estado(PolicyState.ACTIVA)
-                .canon(new BigDecimal("3500000.00")).prima(new BigDecimal("84000000.00"))
-                .fechaInicio(LocalDate.of(2024, 1, 1)).fechaFin(LocalDate.of(2026, 1, 1))
-                .tomadorId(5L).beneficiarioId(6L).build();
+                .id(POLICY_COL).type("COLECTIVA").state("ACTIVA")
+                .canon(new BigDecimal("3500000.00")).premium(new BigDecimal("84000000.00"))
+                .startDate(LocalDate.of(2024, 1, 1)).endDate(LocalDate.of(2026, 1, 1))
+                .months(24).holderId(HOLDER_ID).beneficiaryId(BENEFICIARY).build();
     }
 
     private RiskResponse riskResponse() {
         return RiskResponse.builder()
-                .id(1L).polizaId(3L).aseguradoId(20L)
-                .direccion("Calle 100 # 9-67, Bogotá").estado(RiskState.ACTIVO).build();
+                .id(RISK_ID).policyId(POLICY_COL).insuredId(INSURED_ID)
+                .address("Calle 100 # 9-67, Bogotá").state("ACTIVO").build();
     }
 }

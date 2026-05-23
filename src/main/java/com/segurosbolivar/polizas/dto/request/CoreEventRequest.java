@@ -10,5 +10,5 @@ import lombok.*;
 public class CoreEventRequest {
 
     private String evento;
-    private Long polizaId;
+    private String polizaId;
 }

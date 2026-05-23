@@ -1,7 +1,7 @@
 package com.segurosbolivar.polizas.model;
 
-import com.segurosbolivar.polizas.model.enums.PolicyState;
-import com.segurosbolivar.polizas.model.enums.PolicyType;
+import com.segurosbolivar.polizas.model.catalog.PolicyState;
+import com.segurosbolivar.polizas.model.catalog.PolicyType;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -9,47 +9,67 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 @Entity
 @Table(name = "policies")
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
+@AttributeOverrides({
+    @AttributeOverride(name = "createdBy", column = @Column(name = "pol_created_by")),
+    @AttributeOverride(name = "updatedBy", column = @Column(name = "pol_updated_by")),
+    @AttributeOverride(name = "createdAt", column = @Column(name = "pol_created_at")),
+    @AttributeOverride(name = "updatedAt", column = @Column(name = "pol_updated_at"))
+})
 @Getter
 @Setter
-public class Policy {
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class Policy extends AuditableEntity {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(name = "pol_id", updatable = false, nullable = false)
+    private UUID id;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "tipo", nullable = false)
-    private PolicyType tipo;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "pty_id", nullable = false)
+    private PolicyType type;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "estado", nullable = false)
-    private PolicyState estado;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "pst_id", nullable = false)
+    private PolicyState state;
 
-    @Column(name = "canon", nullable = false, precision = 15, scale = 2)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "usr_id_holder", nullable = false)
+    private User holder;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "usr_id_beneficiary", nullable = false)
+    private User beneficiary;
+
+    @Column(name = "pol_canon", precision = 19, scale = 2, nullable = false)
     private BigDecimal canon;
 
-    @Column(name = "prima", nullable = false, precision = 15, scale = 2)
-    private BigDecimal prima;
+    @Column(name = "pol_premium", precision = 19, scale = 2, nullable = false)
+    private BigDecimal premium;
 
-    @Column(name = "fecha_inicio", nullable = false)
-    private LocalDate fechaInicio;
+    @Column(name = "pol_months", nullable = false)
+    private Integer months;
 
-    @Column(name = "fecha_fin", nullable = false)
-    private LocalDate fechaFin;
+    @Column(name = "pol_start_date", nullable = false)
+    private LocalDate startDate;
 
-    @Column(name = "tomador_id", nullable = false)
-    private Long tomadorId;
+    @Column(name = "pol_end_date", nullable = false)
+    private LocalDate endDate;
 
-    @Column(name = "beneficiario_id", nullable = false)
-    private Long beneficiarioId;
-
-    @OneToMany(mappedBy = "poliza", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @Column(name = "pol_auto_renewal")
     @Builder.Default
-    private List<Risk> riesgos = new ArrayList<>();
+    private Boolean autoRenewal = false;
+
+    @Column(name = "pol_core_id")
+    private String coreId;
+
+    @OneToMany(mappedBy = "policy", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @Builder.Default
+    private List<Risk> risks = new ArrayList<>();
 }
