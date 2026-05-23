@@ -157,6 +157,27 @@ class PolicyControllerTest {
     }
 
     @Test
+    void deberiaRetornar404AlCancelarPolizaInexistente() throws Exception {
+        when(policyService.cancelarPoliza(99L))
+                .thenThrow(new ResourceNotFoundException("Póliza no encontrada con id: 99"));
+
+        mockMvc.perform(post("/polizas/99/cancelar")
+                        .header(API_KEY_HEADER, API_KEY_VALUE))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error").exists());
+    }
+
+    @Test
+    void deberiaRetornar400AlRenovarConIpcNulo() throws Exception {
+        mockMvc.perform(post("/polizas/1/renovar")
+                        .header(API_KEY_HEADER, API_KEY_VALUE)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"ipc\": null}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").exists());
+    }
+
+    @Test
     void deberiaAgregarRiesgoAPolizaColectiva() throws Exception {
         when(riskService.agregarRiesgo(eq(3L), any(AgregarRiskRequest.class))).thenReturn(riskResponse());
 
