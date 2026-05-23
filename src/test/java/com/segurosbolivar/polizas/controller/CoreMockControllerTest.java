@@ -48,7 +48,7 @@ class CoreMockControllerTest {
 
         CoreEventRequest request = CoreEventRequest.builder()
                 .evento("ACTUALIZACION")
-                .polizaId(1L)
+                .polizaId("550e8400-e29b-41d4-a716-446655440001")
                 .build();
 
         mockMvc.perform(post("/core-mock/evento")
@@ -63,7 +63,7 @@ class CoreMockControllerTest {
     void deberiaRetornar401SinApiKey() throws Exception {
         CoreEventRequest request = CoreEventRequest.builder()
                 .evento("ACTUALIZACION")
-                .polizaId(1L)
+                .polizaId("550e8400-e29b-41d4-a716-446655440001")
                 .build();
 
         mockMvc.perform(post("/core-mock/evento")
