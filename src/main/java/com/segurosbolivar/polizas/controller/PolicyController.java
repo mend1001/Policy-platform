@@ -8,6 +8,7 @@ import com.segurosbolivar.polizas.model.enums.PolicyState;
 import com.segurosbolivar.polizas.model.enums.PolicyType;
 import com.segurosbolivar.polizas.service.PolicyService;
 import com.segurosbolivar.polizas.service.RiskService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -38,7 +39,7 @@ public class PolicyController {
     @PostMapping("/{id}/renovar")
     public ResponseEntity<PolicyResponse> renovarPoliza(
             @PathVariable Long id,
-            @RequestBody RenovarPolicyRequest request) {
+            @RequestBody @Valid RenovarPolicyRequest request) {
         return ResponseEntity.ok(policyService.renovarPoliza(id, request));
     }
 
@@ -50,7 +51,7 @@ public class PolicyController {
     @PostMapping("/{id}/riesgos")
     public ResponseEntity<RiskResponse> agregarRiesgo(
             @PathVariable Long id,
-            @RequestBody AgregarRiskRequest request) {
+            @RequestBody @Valid AgregarRiskRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(riskService.agregarRiesgo(id, request));
     }
 }
