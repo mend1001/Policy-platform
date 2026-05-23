@@ -1,39 +1,42 @@
 package com.segurosbolivar.polizas.dto.response;
 
 import com.segurosbolivar.polizas.model.Policy;
-import com.segurosbolivar.polizas.model.enums.PolicyState;
-import com.segurosbolivar.polizas.model.enums.PolicyType;
 import lombok.Builder;
 import lombok.Getter;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.UUID;
 
 @Builder
 @Getter
 public class PolicyResponse {
 
-    private Long id;
-    private PolicyType tipo;
-    private PolicyState estado;
+    private UUID id;
+    private String type;
+    private String state;
     private BigDecimal canon;
-    private BigDecimal prima;
-    private LocalDate fechaInicio;
-    private LocalDate fechaFin;
-    private Long tomadorId;
-    private Long beneficiarioId;
+    private BigDecimal premium;
+    private LocalDate startDate;
+    private LocalDate endDate;
+    private Boolean autoRenewal;
+    private Integer months;
+    private UUID holderId;
+    private UUID beneficiaryId;
 
     public static PolicyResponse from(Policy policy) {
         return PolicyResponse.builder()
                 .id(policy.getId())
-                .tipo(policy.getTipo())
-                .estado(policy.getEstado())
+                .type(policy.getType().getName())
+                .state(policy.getState().getName())
                 .canon(policy.getCanon())
-                .prima(policy.getPrima())
-                .fechaInicio(policy.getFechaInicio())
-                .fechaFin(policy.getFechaFin())
-                .tomadorId(policy.getTomadorId())
-                .beneficiarioId(policy.getBeneficiarioId())
+                .premium(policy.getPremium())
+                .startDate(policy.getStartDate())
+                .endDate(policy.getEndDate())
+                .autoRenewal(policy.getAutoRenewal())
+                .months(policy.getMonths())
+                .holderId(policy.getHolder().getId())
+                .beneficiaryId(policy.getBeneficiary().getId())
                 .build();
     }
 }
