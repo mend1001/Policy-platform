@@ -10,10 +10,12 @@ import com.segurosbolivar.polizas.repository.PolicyRepository;
 import com.segurosbolivar.polizas.repository.RiskRepository;
 import com.segurosbolivar.polizas.service.RiskService;
 import com.segurosbolivar.polizas.service.validation.PolicyValidationStrategy;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+@Slf4j
 @Service
 public class RiskServiceImpl implements RiskService {
 
@@ -36,6 +38,7 @@ public class RiskServiceImpl implements RiskService {
     @Override
     @Transactional
     public RiskResponse agregarRiesgo(Long polizaId, AgregarRiskRequest request) {
+        log.info("Agregando riesgo a póliza id={}, aseguradoId={}", polizaId, request.getAseguradoId());
         Policy policy = buscarPolicyOLanzarExcepcion(polizaId);
         agregarRiskValidation.validate(policy);
 
@@ -47,17 +50,20 @@ public class RiskServiceImpl implements RiskService {
                 .build();
 
         Risk saved = riskRepository.save(risk);
+        log.info("Riesgo id={} agregado a póliza id={}", saved.getId(), polizaId);
         return RiskResponse.from(saved);
     }
 
     @Override
     @Transactional
     public RiskResponse cancelarRiesgo(Long riesgoId) {
+        log.info("Cancelando riesgo id={}", riesgoId);
         Risk risk = riskRepository.findById(riesgoId)
                 .orElseThrow(() -> new ResourceNotFoundException(MSG_RIESGO_NO_ENCONTRADO + riesgoId));
 
         risk.setEstado(RiskState.CANCELADO);
         Risk saved = riskRepository.save(risk);
+        log.info("Riesgo id={} cancelado exitosamente", riesgoId);
         return RiskResponse.from(saved);
     }
 
