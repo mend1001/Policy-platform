@@ -80,4 +80,8 @@ public class Policy extends AuditableEntity {
     @OneToMany(mappedBy = "policy", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     @Builder.Default
     private List<IntegrationEvent> integrationEvents = new ArrayList<>();
+
+    @OneToMany(mappedBy = "policy", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @Builder.Default
+    private List<Notification> notifications = new ArrayList<>();
 }

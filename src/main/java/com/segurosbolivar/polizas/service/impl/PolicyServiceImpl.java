@@ -5,10 +5,12 @@ import com.segurosbolivar.polizas.dto.response.PolicyResponse;
 import com.segurosbolivar.polizas.dto.response.RiskResponse;
 import com.segurosbolivar.polizas.exception.BusinessException;
 import com.segurosbolivar.polizas.exception.ResourceNotFoundException;
+import com.segurosbolivar.polizas.model.Notification;
 import com.segurosbolivar.polizas.model.Policy;
 import com.segurosbolivar.polizas.model.Renewal;
 import com.segurosbolivar.polizas.model.catalog.PolicyState;
 import com.segurosbolivar.polizas.model.catalog.RiskState;
+import com.segurosbolivar.polizas.repository.NotificationRepository;
 import com.segurosbolivar.polizas.repository.PolicyRepository;
 import com.segurosbolivar.polizas.repository.RenewalRepository;
 import com.segurosbolivar.polizas.repository.catalog.PolicyStateRepository;
@@ -40,6 +42,7 @@ public class PolicyServiceImpl implements PolicyService {
     private final PolicyStateRepository policyStateRepository;
     private final RiskStateRepository riskStateRepository;
     private final RenewalRepository renewalRepository;
+    private final NotificationRepository notificationRepository;
     private final CoreMockService coreMockService;
     private final PolicyValidationStrategy renovarPolicyValidation;
 
@@ -48,12 +51,14 @@ public class PolicyServiceImpl implements PolicyService {
             PolicyStateRepository policyStateRepository,
             RiskStateRepository riskStateRepository,
             RenewalRepository renewalRepository,
+            NotificationRepository notificationRepository,
             CoreMockService coreMockService,
             @Qualifier("renovarPolicyValidation") PolicyValidationStrategy renovarPolicyValidation) {
         this.policyRepository = policyRepository;
         this.policyStateRepository = policyStateRepository;
         this.riskStateRepository = riskStateRepository;
         this.renewalRepository = renewalRepository;
+        this.notificationRepository = notificationRepository;
         this.coreMockService = coreMockService;
         this.renovarPolicyValidation = renovarPolicyValidation;
     }
@@ -105,6 +110,7 @@ public class PolicyServiceImpl implements PolicyService {
         renewalRepository.save(renewal);
 
         coreMockService.notifyCore(saved, "POLICY_RENEWED");
+        notificationRepository.save(crearNotificacion(saved, "POLICY_RENEWED"));
 
         log.info("Póliza id={} renovada exitosamente. Nuevo canon={}", polizaId, canonAfter);
         return PolicyResponse.from(saved);
@@ -127,6 +133,7 @@ public class PolicyServiceImpl implements PolicyService {
 
         Policy saved = policyRepository.save(policy);
         coreMockService.notifyCore(saved, "POLICY_CANCELLED");
+        notificationRepository.save(crearNotificacion(saved, "POLICY_CANCELLED"));
 
         log.info("Póliza id={} cancelada con {} riesgos cancelados", polizaId, riesgosCancelados);
         return PolicyResponse.from(saved);
@@ -160,6 +167,16 @@ public class PolicyServiceImpl implements PolicyService {
 
     private BigDecimal calcularPrima(BigDecimal canon, Integer months) {
         return canon.multiply(BigDecimal.valueOf(months));
+    }
+
+    private Notification crearNotificacion(Policy policy, String type) {
+        return Notification.builder()
+                .policy(policy)
+                .type(type)
+                .channel("EMAIL")
+                .recipient(policy.getHolder().getEmail())
+                .state("PENDING")
+                .build();
     }
 
 }
