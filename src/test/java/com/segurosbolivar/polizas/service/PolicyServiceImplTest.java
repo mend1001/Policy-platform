@@ -146,7 +146,7 @@ class PolicyServiceImplTest {
 
         assertThat(result.getState()).isEqualTo("RENOVADA");
         assertThat(result.getCanon()).isGreaterThan(canonOriginal);
-        verify(coreMockService).enviarEvento(any());
+        verify(coreMockService).notifyCore(any(Policy.class), anyString());
     }
 
     @Test
@@ -181,7 +181,7 @@ class PolicyServiceImplTest {
 
         assertThat(result.getState()).isEqualTo("CANCELADA");
         assertThat(policy.getRisks()).allMatch(r -> "CANCELADO".equals(r.getState().getName()));
-        verify(coreMockService).enviarEvento(any());
+        verify(coreMockService).notifyCore(any(Policy.class), anyString());
     }
 
     @Test
