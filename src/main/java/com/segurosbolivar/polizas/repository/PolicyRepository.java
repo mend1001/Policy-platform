@@ -1,17 +1,16 @@
 package com.segurosbolivar.polizas.repository;
 
 import com.segurosbolivar.polizas.model.Policy;
-import com.segurosbolivar.polizas.model.enums.PolicyState;
-import com.segurosbolivar.polizas.model.enums.PolicyType;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
+import java.util.UUID;
 
-public interface PolicyRepository extends JpaRepository<Policy, Long> {
+public interface PolicyRepository extends JpaRepository<Policy, UUID> {
 
-    List<Policy> findByTipo(PolicyType tipo);
+    List<Policy> findByType_Name(String typeName);
 
-    List<Policy> findByEstado(PolicyState estado);
+    List<Policy> findByState_Name(String stateName);
 
-    List<Policy> findByTipoAndEstado(PolicyType tipo, PolicyState estado);
+    List<Policy> findByType_NameAndState_Name(String typeName, String stateName);
 }
