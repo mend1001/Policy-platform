@@ -13,6 +13,7 @@ import com.segurosbolivar.polizas.repository.PolicyRepository;
 import com.segurosbolivar.polizas.service.CoreMockService;
 import com.segurosbolivar.polizas.service.PolicyService;
 import com.segurosbolivar.polizas.service.validation.PolicyValidationStrategy;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,6 +22,7 @@ import java.math.BigDecimal;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 
+@Slf4j
 @Service
 public class PolicyServiceImpl implements PolicyService {
 
@@ -57,6 +59,7 @@ public class PolicyServiceImpl implements PolicyService {
     @Override
     @Transactional
     public PolicyResponse renovarPoliza(Long polizaId, RenovarPolicyRequest request) {
+        log.info("Renovando póliza id={}, ipc={}", polizaId, request.getIpc());
         Policy policy = buscarPolicyOLanzarExcepcion(polizaId);
         renovarPolicyValidation.validate(policy);
 
@@ -70,23 +73,27 @@ public class PolicyServiceImpl implements PolicyService {
         Policy saved = policyRepository.save(policy);
         notificarCore(polizaId);
 
+        log.info("Póliza id={} renovada exitosamente. Nuevo canon={}", polizaId, canonActualizado);
         return PolicyResponse.from(saved);
     }
 
     @Override
     @Transactional
     public PolicyResponse cancelarPoliza(Long polizaId) {
+        log.info("Cancelando póliza id={}", polizaId);
         Policy policy = buscarPolicyOLanzarExcepcion(polizaId);
 
-        policy.getRiesgos().stream()
+        long riesgosCancelados = policy.getRiesgos().stream()
                 .filter(risk -> RiskState.ACTIVO.equals(risk.getEstado()))
-                .forEach(risk -> risk.setEstado(RiskState.CANCELADO));
+                .peek(risk -> risk.setEstado(RiskState.CANCELADO))
+                .count();
 
         policy.setEstado(PolicyState.CANCELADA);
 
         Policy saved = policyRepository.save(policy);
         notificarCore(polizaId);
 
+        log.info("Póliza id={} cancelada con {} riesgos cancelados", polizaId, riesgosCancelados);
         return PolicyResponse.from(saved);
     }
 
