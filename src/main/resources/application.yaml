@@ -1,0 +1,25 @@
+spring:
+  application:
+    name: polizas
+  datasource:
+    url: jdbc:h2:mem:polizasdb
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: ""
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: true
+    defer-datasource-initialization: true
+  sql:
+    init:
+      mode: always
+
+app:
+  api-key: ${APP_API_KEY:123456}
+  core-mock-url: ${CORE_MOCK_URL:http://localhost:8080}
+  ipc-default: ${IPC_DEFAULT:0.09}
