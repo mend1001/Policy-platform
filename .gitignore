@@ -36,5 +36,5 @@ docs/
 classpath.txt
 classpath_all.txt
 jars.txt
-polizas/
-{
+/polizas/
+/{
