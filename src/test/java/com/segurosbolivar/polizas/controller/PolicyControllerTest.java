@@ -27,6 +27,7 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
+import static org.hamcrest.Matchers.containsString;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
@@ -369,6 +370,49 @@ class PolicyControllerTest {
                                 AgregarRiskRequest.builder().insuredId(INSURED_ID).address("Calle 100 # 9-67, Bogotá").build())))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.httpStatus").value(409));
+    }
+
+    @Test
+    void shouldReturn404WhenRouteDoesNotExist() throws Exception {
+        mockMvc.perform(get(apiBasePath + "/polizas1")
+                        .header(API_KEY_HEADER, API_KEY_VALUE))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.httpStatus").value(404))
+                .andExpect(jsonPath("$.data").isEmpty());
+    }
+
+    @Test
+    void shouldReturn404WhenSubRouteDoesNotExist() throws Exception {
+        mockMvc.perform(get(apiBasePath + "/polizas/{id}/inexistente", UUID.randomUUID())
+                        .header(API_KEY_HEADER, API_KEY_VALUE))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.httpStatus").value(404));
+    }
+
+    @Test
+    void shouldReturn400WhenPathVariableIsNotUUID() throws Exception {
+        mockMvc.perform(get(apiBasePath + "/polizas/no-es-uuid")
+                        .header(API_KEY_HEADER, API_KEY_VALUE))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.httpStatus").value(400))
+                .andExpect(jsonPath("$.message").value(containsString("Invalid value")));
+    }
+
+    @Test
+    void shouldReturn405WhenMethodNotAllowed() throws Exception {
+        mockMvc.perform(delete(apiBasePath + "/polizas")
+                        .header(API_KEY_HEADER, API_KEY_VALUE))
+                .andExpect(status().isMethodNotAllowed())
+                .andExpect(jsonPath("$.httpStatus").value(405));
+    }
+
+    @Test
+    void shouldReturn400WhenBodyIsMissingOnRenovar() throws Exception {
+        mockMvc.perform(post(apiBasePath + "/polizas/{id}/renovar", UUID.randomUUID())
+                        .header(API_KEY_HEADER, API_KEY_VALUE)
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.httpStatus").value(400));
     }
 
     private PolicyResponse polizaResponse() {
