@@ -1,5 +1,6 @@
 package com.segurosbolivar.polizas.exception;
 
+import com.segurosbolivar.polizas.dto.response.ApiMessages;
 import com.segurosbolivar.polizas.dto.response.ApiResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -26,7 +27,7 @@ public class GlobalExceptionHandler {
         log.warn("Route not found: {}", ex.getResourcePath());
         return ResponseEntity
                 .status(HttpStatus.NOT_FOUND)
-                .body(ApiResponse.error(404, "The requested endpoint does not exist: " + ex.getResourcePath()));
+                .body(ApiResponse.error(404, ApiMessages.MSG_RUTA_NO_EXISTE + ex.getResourcePath()));
     }
 
     @ExceptionHandler(NoHandlerFoundException.class)
@@ -34,15 +35,15 @@ public class GlobalExceptionHandler {
         log.warn("No handler found: {}", ex.getRequestURL());
         return ResponseEntity
                 .status(HttpStatus.NOT_FOUND)
-                .body(ApiResponse.error(404, "The requested endpoint does not exist: " + ex.getRequestURL()));
+                .body(ApiResponse.error(404, ApiMessages.MSG_RUTA_NO_EXISTE + ex.getRequestURL()));
     }
 
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     public ResponseEntity<ApiResponse<Void>> handleTypeMismatch(MethodArgumentTypeMismatchException ex) {
         String expectedType = ex.getRequiredType() != null ? ex.getRequiredType().getSimpleName() : "unknown";
-        String message = String.format("Invalid value '%s' for parameter '%s'. Expected type: %s",
+        String message = String.format(ApiMessages.MSG_VALOR_NO_VALIDO,
                 ex.getValue(), ex.getName(), expectedType);
-        log.warn("Type mismatch: {}", message);
+        log.warn("Tipo no coincide: {}", message);
         return ResponseEntity
                 .status(HttpStatus.BAD_REQUEST)
                 .body(ApiResponse.error(400, message));
@@ -51,10 +52,11 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
     public ResponseEntity<ApiResponse<Void>> handleMethodNotAllowed(HttpRequestMethodNotSupportedException ex) {
         String supported = ex.getSupportedHttpMethods() != null ? ex.getSupportedHttpMethods().toString() : "unknown";
-        log.warn("Method not allowed: {} — supported: {}", ex.getMethod(), supported);
+        String message = String.format(ApiMessages.MSG_METODO_NO_SOPORTADO, ex.getMethod(), supported);
+        log.warn("Método no permitido: {}", message);
         return ResponseEntity
                 .status(HttpStatus.METHOD_NOT_ALLOWED)
-                .body(ApiResponse.error(405, "HTTP method '" + ex.getMethod() + "' is not supported. Supported methods: " + supported));
+                .body(ApiResponse.error(405, message));
     }
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
@@ -62,24 +64,25 @@ public class GlobalExceptionHandler {
         log.warn("Unreadable request body: {}", ex.getMessage());
         return ResponseEntity
                 .status(HttpStatus.BAD_REQUEST)
-                .body(ApiResponse.error(400, "Request body is missing or contains invalid JSON"));
+                .body(ApiResponse.error(400, ApiMessages.MSG_BODY_INVALIDO));
     }
 
     @ExceptionHandler(MissingServletRequestParameterException.class)
     public ResponseEntity<ApiResponse<Void>> handleMissingParam(MissingServletRequestParameterException ex) {
         log.warn("Missing parameter: {}", ex.getParameterName());
+        String message = String.format(ApiMessages.MSG_PARAMETRO_FALTANTE,
+                ex.getParameterName(), ex.getParameterType());
         return ResponseEntity
                 .status(HttpStatus.BAD_REQUEST)
-                .body(ApiResponse.error(400, "Required parameter '" + ex.getParameterName()
-                        + "' of type '" + ex.getParameterType() + "' is missing"));
+                .body(ApiResponse.error(400, message));
     }
 
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ApiResponse<Void>> handleDataIntegrity(DataIntegrityViolationException ex) {
-        log.error("Data integrity violation: {}", ex.getMessage());
+        log.error("Violación de la integridad de los datos: {}", ex.getMessage());
         return ResponseEntity
                 .status(HttpStatus.CONFLICT)
-                .body(ApiResponse.error(409, "Operation could not be completed due to a data integrity constraint"));
+                .body(ApiResponse.error(409, ApiMessages.MSG_INTEGRIDAD_DATOS));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
@@ -87,7 +90,7 @@ public class GlobalExceptionHandler {
         String message = ex.getBindingResult().getFieldErrors().stream()
                 .map(e -> e.getField() + ": " + e.getDefaultMessage())
                 .collect(Collectors.joining(", "));
-        log.warn("Validation failed: {}", message);
+        log.warn("Validación fallida: {}", message);
         return ResponseEntity
                 .status(HttpStatus.BAD_REQUEST)
                 .body(ApiResponse.error(400, message));
@@ -95,7 +98,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<ApiResponse<Void>> handleBusinessException(BusinessException ex) {
-        log.warn("Business rule violation: {}", ex.getMessage());
+        log.warn("Regla de negocio violada: {}", ex.getMessage());
         return ResponseEntity
                 .status(ex.getStatus())
                 .body(ApiResponse.error(ex.getStatus().value(), ex.getMessage()));
@@ -103,7 +106,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<ApiResponse<Void>> handleResourceNotFoundException(ResourceNotFoundException ex) {
-        log.warn("Resource not found: {}", ex.getMessage());
+        log.warn("Recurso no encontrado: {}", ex.getMessage());
         return ResponseEntity
                 .status(HttpStatus.NOT_FOUND)
                 .body(ApiResponse.error(404, ex.getMessage()));
@@ -111,9 +114,9 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Void>> handleGenericException(Exception ex) {
-        log.error("Unexpected error: {}", ex.getMessage(), ex);
+        log.error("Error inesperado: {}", ex.getMessage(), ex);
         return ResponseEntity
                 .status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(ApiResponse.error(500, "Internal server error"));
+                .body(ApiResponse.error(500, ApiMessages.MSG_ERROR_INTERNO));
     }
 }

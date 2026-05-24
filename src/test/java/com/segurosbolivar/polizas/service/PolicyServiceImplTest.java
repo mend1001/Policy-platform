@@ -1,6 +1,7 @@
 package com.segurosbolivar.polizas.service;
 
 import com.segurosbolivar.polizas.dto.request.RenovarPolicyRequest;
+import com.segurosbolivar.polizas.dto.response.ApiMessages;
 import com.segurosbolivar.polizas.dto.response.PolicyResponse;
 import com.segurosbolivar.polizas.exception.BusinessException;
 import com.segurosbolivar.polizas.exception.ResourceNotFoundException;
@@ -202,7 +203,7 @@ class PolicyServiceImplTest {
 
         assertThatThrownBy(() -> policyService.renewPolicy(id, request))
                 .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("cancelada");
+                .hasMessage(ApiMessages.POLICY_CANCELLED_ERROR);
 
         verify(policyRepository, never()).save(any());
     }
@@ -399,7 +400,7 @@ class PolicyServiceImplTest {
 
         assertThatThrownBy(() -> policyService.cancelPolicy(id))
                 .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("already cancelled");
+                .hasMessage(ApiMessages.MSG_POLIZA_YA_CANCELADA);
 
         verify(policyRepository, never()).save(any());
     }
