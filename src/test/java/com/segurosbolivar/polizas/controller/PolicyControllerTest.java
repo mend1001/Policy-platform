@@ -104,6 +104,57 @@ class PolicyControllerTest {
     }
 
     @Test
+    void deberiaObtenerPolizaPorId() throws Exception {
+        when(policyService.findById(POLICY_ID)).thenReturn(polizaResponse());
+
+        mockMvc.perform(get("/polizas/" + POLICY_ID)
+                        .header(API_KEY_HEADER, API_KEY_VALUE))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.httpStatus").value(200))
+                .andExpect(jsonPath("$.message").exists())
+                .andExpect(jsonPath("$.data.type").value("INDIVIDUAL"))
+                .andExpect(jsonPath("$.data.state").value("ACTIVA"));
+    }
+
+    @Test
+    void deberiaRetornar404AlBuscarPolizaInexistente() throws Exception {
+        when(policyService.findById(UNKNOWN_ID))
+                .thenThrow(new ResourceNotFoundException("Póliza no encontrada con id: " + UNKNOWN_ID));
+
+        mockMvc.perform(get("/polizas/" + UNKNOWN_ID)
+                        .header(API_KEY_HEADER, API_KEY_VALUE))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.httpStatus").value(404))
+                .andExpect(jsonPath("$.message").exists());
+    }
+
+    @Test
+    void deberiaListarPolizasPorBeneficiario() throws Exception {
+        when(policyService.findByBeneficiary(eq(BENEFICIARY), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(polizaResponse())));
+
+        mockMvc.perform(get("/polizas/beneficiary/" + BENEFICIARY)
+                        .header(API_KEY_HEADER, API_KEY_VALUE))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.httpStatus").value(200))
+                .andExpect(jsonPath("$.data.content[0].type").value("INDIVIDUAL"))
+                .andExpect(jsonPath("$.data.totalElements").exists());
+    }
+
+    @Test
+    void deberiaListarPolizasPorTomador() throws Exception {
+        when(policyService.findByHolder(eq(HOLDER_ID), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(polizaResponse())));
+
+        mockMvc.perform(get("/polizas/holder/" + HOLDER_ID)
+                        .header(API_KEY_HEADER, API_KEY_VALUE))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.httpStatus").value(200))
+                .andExpect(jsonPath("$.data.content[0].type").value("INDIVIDUAL"))
+                .andExpect(jsonPath("$.data.totalElements").exists());
+    }
+
+    @Test
     void deberiaListarRiesgosDePoliza() throws Exception {
         when(riskService.listByPolicy(eq(POLICY_ID), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of(riskResponse())));
