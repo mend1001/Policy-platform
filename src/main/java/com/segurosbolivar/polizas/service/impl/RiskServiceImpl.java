@@ -84,6 +84,10 @@ public class RiskServiceImpl implements RiskService {
         Risk risk = riskRepository.findById(riesgoId)
                 .orElseThrow(() -> new ResourceNotFoundException(MSG_RIESGO_NO_ENCONTRADO + riesgoId));
 
+        if (STATE_CANCELADO.equals(risk.getState().getName())) {
+            throw new BusinessException("Risk is already cancelled", HttpStatus.CONFLICT);
+        }
+
         RiskState cancelledState = riskStateRepository.findByName(STATE_CANCELADO)
                 .orElseThrow(() -> new BusinessException("Estado CANCELADO no encontrado en catálogo", HttpStatus.INTERNAL_SERVER_ERROR));
 
