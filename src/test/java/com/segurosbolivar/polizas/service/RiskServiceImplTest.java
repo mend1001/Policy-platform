@@ -208,6 +208,41 @@ class RiskServiceImplTest {
                 .isInstanceOf(ResourceNotFoundException.class);
     }
 
+    @Test
+    void deberiaLanzar409AlCancelarRiesgoYaCancelado() {
+        UUID riesgoId = UUID.randomUUID();
+        UUID polizaId = UUID.randomUUID();
+        Policy policy = polizaActivaColectiva(polizaId);
+        User insured = usuario(UUID.randomUUID());
+        RiskState canceladoState = estadoRiesgo("CANCELADO");
+        Risk risk = riesgoActivo(policy, insured, canceladoState);
+
+        when(riskRepository.findById(riesgoId)).thenReturn(Optional.of(risk));
+
+        assertThatThrownBy(() -> riskService.cancelRisk(riesgoId))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("already cancelled");
+
+        verify(riskRepository, never()).save(any());
+    }
+
+    @Test
+    void deberiaLanzar409AlAgregarRiesgoAPolizaCancelada() {
+        UUID polizaId = UUID.randomUUID();
+        UUID insuredId = UUID.randomUUID();
+        Policy policy = polizaCanceladaColectiva(polizaId);
+        when(policyRepository.findById(polizaId)).thenReturn(Optional.of(policy));
+
+        AgregarRiskRequest request = AgregarRiskRequest.builder()
+                .insuredId(insuredId).address("Calle 100 # 9-67, Bogotá").build();
+
+        assertThatThrownBy(() -> riskService.addRisk(polizaId, request))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("not active");
+
+        verify(riskRepository, never()).save(any());
+    }
+
     // ── helpers ──────────────────────────────────────────────────────────────
 
     private User usuario(UUID id) {
@@ -240,6 +275,22 @@ class RiskServiceImplTest {
                 .id(id)
                 .type(PolicyType.builder().id(UUID.randomUUID()).name("COLECTIVA").build())
                 .state(PolicyState.builder().id(UUID.randomUUID()).name("ACTIVA").build())
+                .holder(usuario(UUID.randomUUID()))
+                .beneficiary(usuario(UUID.randomUUID()))
+                .canon(new BigDecimal("3500000.00"))
+                .premium(new BigDecimal("84000000.00"))
+                .months(24)
+                .startDate(LocalDate.of(2024, 1, 1))
+                .endDate(LocalDate.of(2026, 1, 1))
+                .risks(new ArrayList<>())
+                .build();
+    }
+
+    private Policy polizaCanceladaColectiva(UUID id) {
+        return Policy.builder()
+                .id(id)
+                .type(PolicyType.builder().id(UUID.randomUUID()).name("COLECTIVA").build())
+                .state(PolicyState.builder().id(UUID.randomUUID()).name("CANCELADA").build())
                 .holder(usuario(UUID.randomUUID()))
                 .beneficiary(usuario(UUID.randomUUID()))
                 .canon(new BigDecimal("3500000.00"))

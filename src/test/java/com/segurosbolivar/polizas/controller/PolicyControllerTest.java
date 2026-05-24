@@ -298,6 +298,75 @@ class PolicyControllerTest {
                 .andExpect(jsonPath("$.message").exists());
     }
 
+    @Test
+    void deberiaRetornar400ConIpcMayorA1() throws Exception {
+        mockMvc.perform(post("/polizas/" + POLICY_ID + "/renovar")
+                        .header(API_KEY_HEADER, API_KEY_VALUE)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"ipc\":2.5}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.httpStatus").value(400));
+    }
+
+    @Test
+    void deberiaRetornar400ConIpcCero() throws Exception {
+        mockMvc.perform(post("/polizas/" + POLICY_ID + "/renovar")
+                        .header(API_KEY_HEADER, API_KEY_VALUE)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"ipc\":0}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.httpStatus").value(400));
+    }
+
+    @Test
+    void deberiaRetornar400ConBodyAusente() throws Exception {
+        mockMvc.perform(post("/polizas/" + POLICY_ID + "/renovar")
+                        .header(API_KEY_HEADER, API_KEY_VALUE)
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.httpStatus").value(400));
+    }
+
+    @Test
+    void deberiaRetornar400ConUUIDInvalido() throws Exception {
+        mockMvc.perform(get("/polizas/not-a-uuid")
+                        .header(API_KEY_HEADER, API_KEY_VALUE))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.httpStatus").value(400));
+    }
+
+    @Test
+    void deberiaRetornar401SinApiKeyNoRetornar500() throws Exception {
+        mockMvc.perform(get("/polizas"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.httpStatus").value(401));
+    }
+
+    @Test
+    void deberiaRetornar409AlCancelarPolizaYaCancelada() throws Exception {
+        when(policyService.cancelPolicy(POLICY_ID))
+                .thenThrow(new BusinessException("Policy is already cancelled", HttpStatus.CONFLICT));
+
+        mockMvc.perform(post("/polizas/" + POLICY_ID + "/cancelar")
+                        .header(API_KEY_HEADER, API_KEY_VALUE))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.httpStatus").value(409));
+    }
+
+    @Test
+    void deberiaRetornar409AlAgregarRiesgoAPolizaCancelada() throws Exception {
+        when(riskService.addRisk(eq(POLICY_ID), any(AgregarRiskRequest.class)))
+                .thenThrow(new BusinessException("Cannot add risks to a policy that is not active", HttpStatus.CONFLICT));
+
+        mockMvc.perform(post("/polizas/" + POLICY_ID + "/riesgos")
+                        .header(API_KEY_HEADER, API_KEY_VALUE)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(
+                                AgregarRiskRequest.builder().insuredId(INSURED_ID).address("Calle 100 # 9-67, Bogotá").build())))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.httpStatus").value(409));
+    }
+
     private PolicyResponse polizaResponse() {
         return PolicyResponse.builder()
                 .id(POLICY_ID).type("INDIVIDUAL").state("ACTIVA")

@@ -374,4 +374,49 @@ class PolicyServiceImplTest {
                 .risks(new ArrayList<>())
                 .build();
     }
+
+    private Policy polizaCanceladaColectiva(UUID id) {
+        return Policy.builder()
+                .id(id)
+                .type(tipoPolitica("COLECTIVA"))
+                .state(estadoPoliza("CANCELADA"))
+                .holder(usuario())
+                .beneficiary(usuario())
+                .canon(new BigDecimal("3500000.00"))
+                .premium(new BigDecimal("84000000.00"))
+                .months(24)
+                .startDate(LocalDate.of(2024, 1, 1))
+                .endDate(LocalDate.of(2026, 1, 1))
+                .risks(new ArrayList<>())
+                .build();
+    }
+
+    @Test
+    void deberiaLanzar409AlCancelarPolizaYaCancelada() {
+        UUID id = UUID.randomUUID();
+        Policy policy = polizaCancelada(id);
+        when(policyRepository.findById(id)).thenReturn(Optional.of(policy));
+
+        assertThatThrownBy(() -> policyService.cancelPolicy(id))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("already cancelled");
+
+        verify(policyRepository, never()).save(any());
+    }
+
+    @Test
+    void deberiaActualizarFechasAlRenovarPoliza() {
+        UUID id = UUID.randomUUID();
+        Policy policy = polizaActivaIndividual(id);
+        LocalDate endDateAntes = policy.getEndDate();
+
+        when(policyRepository.findById(id)).thenReturn(Optional.of(policy));
+        when(policyStateRepository.findByName("RENOVADA")).thenReturn(Optional.of(estadoPoliza("RENOVADA")));
+        when(policyRepository.save(any(Policy.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        policyService.renewPolicy(id, new RenovarPolicyRequest(new BigDecimal("0.09")));
+
+        assertThat(policy.getStartDate()).isEqualTo(endDateAntes.plusDays(1));
+        assertThat(policy.getEndDate()).isEqualTo(endDateAntes.plusDays(1).plusMonths(policy.getMonths()));
+    }
 }
