@@ -5,7 +5,9 @@ import com.segurosbolivar.polizas.dto.response.PolicyResponse;
 import com.segurosbolivar.polizas.dto.response.RiskResponse;
 import com.segurosbolivar.polizas.exception.BusinessException;
 import com.segurosbolivar.polizas.exception.ResourceNotFoundException;
+import com.segurosbolivar.polizas.model.Notification;
 import com.segurosbolivar.polizas.model.Policy;
+import com.segurosbolivar.polizas.model.Renewal;
 import com.segurosbolivar.polizas.model.Risk;
 import com.segurosbolivar.polizas.model.User;
 import com.segurosbolivar.polizas.model.catalog.PolicyState;
@@ -186,6 +188,49 @@ class PolicyServiceImplTest {
         assertThat(result.getState()).isEqualTo("CANCELADA");
         assertThat(policy.getRisks()).allMatch(r -> "CANCELADO".equals(r.getState().getName()));
         verify(coreMockService).notifyCore(any(Policy.class), anyString());
+    }
+
+    @Test
+    void deberiaGuardarRenovationAlRenovar() {
+        UUID id = UUID.randomUUID();
+        Policy policy = polizaActivaIndividual(id);
+
+        when(policyRepository.findById(id)).thenReturn(Optional.of(policy));
+        when(policyStateRepository.findByName("RENOVADA")).thenReturn(Optional.of(estadoPoliza("RENOVADA")));
+        when(policyRepository.save(any(Policy.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        policyService.renovarPoliza(id, new RenovarPolicyRequest(0.05));
+
+        verify(renewalRepository).save(any(Renewal.class));
+    }
+
+    @Test
+    void deberiaGuardarNotificacionAlRenovar() {
+        UUID id = UUID.randomUUID();
+        Policy policy = polizaActivaIndividual(id);
+
+        when(policyRepository.findById(id)).thenReturn(Optional.of(policy));
+        when(policyStateRepository.findByName("RENOVADA")).thenReturn(Optional.of(estadoPoliza("RENOVADA")));
+        when(policyRepository.save(any(Policy.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        policyService.renovarPoliza(id, new RenovarPolicyRequest(0.05));
+
+        verify(notificationRepository).save(any(Notification.class));
+    }
+
+    @Test
+    void deberiaGuardarNotificacionAlCancelar() {
+        UUID id = UUID.randomUUID();
+        Policy policy = polizaActivaColectivaConRiesgos(id);
+
+        when(policyRepository.findById(id)).thenReturn(Optional.of(policy));
+        when(riskStateRepository.findByName("CANCELADO")).thenReturn(Optional.of(estadoRiesgo("CANCELADO")));
+        when(policyStateRepository.findByName("CANCELADA")).thenReturn(Optional.of(estadoPoliza("CANCELADA")));
+        when(policyRepository.save(any(Policy.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        policyService.cancelarPoliza(id);
+
+        verify(notificationRepository).save(any(Notification.class));
     }
 
     @Test
