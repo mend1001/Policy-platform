@@ -8,6 +8,9 @@ target/
 *.log
 application-local.yml
 
+# Environment variables — NUNCA commitear
+.env
+
 # Claude Code — notas privadas
 CLAUDE.local.md
 CLAUDE.md
