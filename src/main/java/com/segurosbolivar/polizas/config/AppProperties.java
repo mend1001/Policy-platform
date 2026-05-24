@@ -11,5 +11,4 @@ public class AppProperties {
 
     private String apiKey;
     private String coreMockUrl;
-    private Double ipcDefault;
 }

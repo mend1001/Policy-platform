@@ -19,4 +19,3 @@ spring:
 app:
   api-key: 123456
   core-mock-url: http://localhost:8080
-  ipc-default: 0.09
