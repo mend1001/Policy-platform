@@ -26,6 +26,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.UUID;
 
 @Slf4j
@@ -111,8 +112,13 @@ public class PolicyServiceImpl implements PolicyService {
         BigDecimal canonAfter = calcularCanonConIpc(canonBefore, request.getIpc());
         BigDecimal premiumAfter = calcularPrima(canonAfter, policy.getMonths());
 
+        LocalDate newStartDate = policy.getEndDate().plusDays(1);
+        LocalDate newEndDate = newStartDate.plusMonths(policy.getMonths());
+
         policy.setCanon(canonAfter);
         policy.setPremium(premiumAfter);
+        policy.setStartDate(newStartDate);
+        policy.setEndDate(newEndDate);
         policy.setState(obtenerEstadoOLanzarExcepcion(STATE_RENOVADA));
 
         Policy saved = policyRepository.save(policy);
@@ -142,6 +148,10 @@ public class PolicyServiceImpl implements PolicyService {
     public PolicyResponse cancelarPoliza(UUID polizaId) {
         log.info("Cancelando póliza id={}", polizaId);
         Policy policy = buscarPolicyOLanzarExcepcion(polizaId);
+
+        if (STATE_CANCELADA.equals(policy.getState().getName())) {
+            throw new BusinessException("Policy is already cancelled", HttpStatus.CONFLICT);
+        }
 
         RiskState cancelledRiskState = obtenerEstadoRiesgoOLanzarExcepcion(STATE_CANCELLED_RISK);
 
