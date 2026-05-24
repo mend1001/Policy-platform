@@ -2,6 +2,7 @@ package com.segurosbolivar.polizas.controller;
 
 import com.segurosbolivar.polizas.config.AppProperties;
 import com.segurosbolivar.polizas.dto.request.AgregarRiskRequest;
+import com.segurosbolivar.polizas.dto.response.ApiMessages;
 import com.segurosbolivar.polizas.dto.request.RenovarPolicyRequest;
 import com.segurosbolivar.polizas.dto.response.PolicyResponse;
 import com.segurosbolivar.polizas.dto.response.RiskResponse;
@@ -222,7 +223,7 @@ class PolicyControllerTest {
     @Test
     void deberiaRetornar400AlRenovarPolizaCancelada() throws Exception {
         when(policyService.renewPolicy(eq(POLICY_ID), any(RenovarPolicyRequest.class)))
-                .thenThrow(new BusinessException("No se puede renovar una póliza cancelada", HttpStatus.BAD_REQUEST));
+                .thenThrow(new BusinessException(ApiMessages.POLICY_CANCELLED_ERROR, HttpStatus.BAD_REQUEST));
 
         mockMvc.perform(post(apiBasePath + "/polizas/" + POLICY_ID + "/renovar")
                         .header(API_KEY_HEADER, API_KEY_VALUE)
@@ -230,7 +231,7 @@ class PolicyControllerTest {
                         .content(objectMapper.writeValueAsString(new RenovarPolicyRequest(new BigDecimal("0.09")))))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.httpStatus").value(400))
-                .andExpect(jsonPath("$.message").value("No se puede renovar una póliza cancelada"));
+                .andExpect(jsonPath("$.message").value(ApiMessages.POLICY_CANCELLED_ERROR));
     }
 
     @Test
@@ -350,7 +351,7 @@ class PolicyControllerTest {
     @Test
     void deberiaRetornar409AlCancelarPolizaYaCancelada() throws Exception {
         when(policyService.cancelPolicy(POLICY_ID))
-                .thenThrow(new BusinessException("Policy is already cancelled", HttpStatus.CONFLICT));
+                .thenThrow(new BusinessException(ApiMessages.MSG_POLIZA_YA_CANCELADA, HttpStatus.CONFLICT));
 
         mockMvc.perform(post(apiBasePath + "/polizas/" + POLICY_ID + "/cancelar")
                         .header(API_KEY_HEADER, API_KEY_VALUE))
@@ -361,7 +362,7 @@ class PolicyControllerTest {
     @Test
     void deberiaRetornar409AlAgregarRiesgoAPolizaCancelada() throws Exception {
         when(riskService.addRisk(eq(POLICY_ID), any(AgregarRiskRequest.class)))
-                .thenThrow(new BusinessException("Cannot add risks to a policy that is not active", HttpStatus.CONFLICT));
+                .thenThrow(new BusinessException(ApiMessages.MSG_POLIZA_NO_ACTIVA, HttpStatus.CONFLICT));
 
         mockMvc.perform(post(apiBasePath + "/polizas/" + POLICY_ID + "/riesgos")
                         .header(API_KEY_HEADER, API_KEY_VALUE)
@@ -395,7 +396,7 @@ class PolicyControllerTest {
                         .header(API_KEY_HEADER, API_KEY_VALUE))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.httpStatus").value(400))
-                .andExpect(jsonPath("$.message").value(containsString("Invalid value")));
+                .andExpect(jsonPath("$.message").value(containsString("Valor no válido")));
     }
 
     @Test

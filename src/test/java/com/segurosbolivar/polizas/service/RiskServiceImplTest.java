@@ -1,6 +1,7 @@
 package com.segurosbolivar.polizas.service;
 
 import com.segurosbolivar.polizas.dto.request.AgregarRiskRequest;
+import com.segurosbolivar.polizas.dto.response.ApiMessages;
 import com.segurosbolivar.polizas.dto.response.RiskResponse;
 import com.segurosbolivar.polizas.exception.BusinessException;
 import com.segurosbolivar.polizas.exception.ResourceNotFoundException;
@@ -221,7 +222,7 @@ class RiskServiceImplTest {
 
         assertThatThrownBy(() -> riskService.cancelRisk(riesgoId))
                 .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("already cancelled");
+                .hasMessage(ApiMessages.MSG_RIESGO_YA_CANCELADO);
 
         verify(riskRepository, never()).save(any());
     }
@@ -238,7 +239,7 @@ class RiskServiceImplTest {
 
         assertThatThrownBy(() -> riskService.addRisk(polizaId, request))
                 .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("not active");
+                .hasMessage(ApiMessages.MSG_POLIZA_NO_ACTIVA);
 
         verify(riskRepository, never()).save(any());
     }

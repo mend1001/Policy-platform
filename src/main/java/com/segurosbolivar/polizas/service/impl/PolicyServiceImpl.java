@@ -29,6 +29,10 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.UUID;
 
+import static com.segurosbolivar.polizas.dto.response.ApiMessages.MSG_POLIZA_YA_CANCELADA;
+import static com.segurosbolivar.polizas.dto.response.ApiMessages.POLICY_NOT_FOUND;
+import static com.segurosbolivar.polizas.dto.response.ApiMessages.RISK_NOT_FOUND;
+
 @Slf4j
 @Service
 public class PolicyServiceImpl implements PolicyService {
@@ -150,7 +154,7 @@ public class PolicyServiceImpl implements PolicyService {
         Policy policy = findPolicyOrThrow(polizaId);
 
         if (STATE_CANCELADA.equals(policy.getState().getName())) {
-            throw new BusinessException("Policy is already cancelled", HttpStatus.CONFLICT);
+            throw new BusinessException(MSG_POLIZA_YA_CANCELADA, HttpStatus.CONFLICT);
         }
 
         RiskState cancelledRiskState = findRiskStateOrThrow(STATE_CANCELLED_RISK);
@@ -177,12 +181,12 @@ public class PolicyServiceImpl implements PolicyService {
 
     private PolicyState findStateOrThrow(String name) {
         return policyStateRepository.findByName(name)
-                .orElseThrow(() -> new BusinessException("Estado de póliza no encontrado: " + name, HttpStatus.INTERNAL_SERVER_ERROR));
+                .orElseThrow(() -> new BusinessException(POLICY_NOT_FOUND + name, HttpStatus.INTERNAL_SERVER_ERROR));
     }
 
     private RiskState findRiskStateOrThrow(String name) {
         return riskStateRepository.findByName(name)
-                .orElseThrow(() -> new BusinessException("Estado de riesgo no encontrado: " + name, HttpStatus.INTERNAL_SERVER_ERROR));
+                .orElseThrow(() -> new BusinessException(RISK_NOT_FOUND + name, HttpStatus.INTERNAL_SERVER_ERROR));
     }
 
     private BigDecimal calculateCanonWithIpc(BigDecimal canon, BigDecimal ipc) {
