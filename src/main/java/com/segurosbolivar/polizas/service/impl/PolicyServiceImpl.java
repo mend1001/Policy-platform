@@ -45,7 +45,7 @@ public class PolicyServiceImpl implements PolicyService {
     private final RenewalRepository renewalRepository;
     private final NotificationRepository notificationRepository;
     private final CoreMockService coreMockService;
-    private final PolicyValidationStrategy renovarPolicyValidation;
+    private final PolicyValidationStrategy renewPolicyValidation;
 
     public PolicyServiceImpl(
             PolicyRepository policyRepository,
@@ -54,19 +54,19 @@ public class PolicyServiceImpl implements PolicyService {
             RenewalRepository renewalRepository,
             NotificationRepository notificationRepository,
             CoreMockService coreMockService,
-            @Qualifier("renovarPolicyValidation") PolicyValidationStrategy renovarPolicyValidation) {
+            @Qualifier("renewPolicyValidation") PolicyValidationStrategy renewPolicyValidation) {
         this.policyRepository = policyRepository;
         this.policyStateRepository = policyStateRepository;
         this.riskStateRepository = riskStateRepository;
         this.renewalRepository = renewalRepository;
         this.notificationRepository = notificationRepository;
         this.coreMockService = coreMockService;
-        this.renovarPolicyValidation = renovarPolicyValidation;
+        this.renewPolicyValidation = renewPolicyValidation;
     }
 
     @Override
     @Transactional(readOnly = true)
-    public Page<PolicyResponse> listarPolizas(String tipo, String estado, Pageable pageable) {
+    public Page<PolicyResponse> listPolicies(String tipo, String estado, Pageable pageable) {
         Page<Policy> policies;
         if (tipo != null && estado != null) {
             policies = policyRepository.findByType_NameAndState_Name(tipo, estado, pageable);
@@ -83,7 +83,7 @@ public class PolicyServiceImpl implements PolicyService {
     @Override
     @Transactional(readOnly = true)
     public PolicyResponse findById(UUID id) {
-        Policy policy = buscarPolicyOLanzarExcepcion(id);
+        Policy policy = findPolicyOrThrow(id);
         return PolicyResponse.from(policy);
     }
 
@@ -101,16 +101,16 @@ public class PolicyServiceImpl implements PolicyService {
 
     @Override
     @Transactional
-    public PolicyResponse renovarPoliza(UUID polizaId, RenovarPolicyRequest request) {
+    public PolicyResponse renewPolicy(UUID polizaId, RenovarPolicyRequest request) {
         log.info("Renovando póliza id={}, ipc={}", polizaId, request.getIpc());
-        Policy policy = buscarPolicyOLanzarExcepcion(polizaId);
-        renovarPolicyValidation.validate(policy);
+        Policy policy = findPolicyOrThrow(polizaId);
+        renewPolicyValidation.validate(policy);
 
         BigDecimal canonBefore = policy.getCanon();
         BigDecimal premiumBefore = policy.getPremium();
 
-        BigDecimal canonAfter = calcularCanonConIpc(canonBefore, request.getIpc());
-        BigDecimal premiumAfter = calcularPrima(canonAfter, policy.getMonths());
+        BigDecimal canonAfter = calculateCanonWithIpc(canonBefore, request.getIpc());
+        BigDecimal premiumAfter = calculatePremium(canonAfter, policy.getMonths());
 
         LocalDate newStartDate = policy.getEndDate().plusDays(1);
         LocalDate newEndDate = newStartDate.plusMonths(policy.getMonths());
@@ -119,7 +119,7 @@ public class PolicyServiceImpl implements PolicyService {
         policy.setPremium(premiumAfter);
         policy.setStartDate(newStartDate);
         policy.setEndDate(newEndDate);
-        policy.setState(obtenerEstadoOLanzarExcepcion(STATE_RENOVADA));
+        policy.setState(findStateOrThrow(STATE_RENOVADA));
 
         Policy saved = policyRepository.save(policy);
 
@@ -137,7 +137,7 @@ public class PolicyServiceImpl implements PolicyService {
         renewalRepository.save(renewal);
 
         coreMockService.notifyCore(saved, "POLICY_RENEWED");
-        notificationRepository.save(crearNotificacion(saved, "POLICY_RENEWED"));
+        notificationRepository.save(createNotification(saved, "POLICY_RENEWED"));
 
         log.info("Póliza id={} renovada exitosamente. Nuevo canon={}", polizaId, canonAfter);
         return PolicyResponse.from(saved);
@@ -145,55 +145,55 @@ public class PolicyServiceImpl implements PolicyService {
 
     @Override
     @Transactional
-    public PolicyResponse cancelarPoliza(UUID polizaId) {
+    public PolicyResponse cancelPolicy(UUID polizaId) {
         log.info("Cancelando póliza id={}", polizaId);
-        Policy policy = buscarPolicyOLanzarExcepcion(polizaId);
+        Policy policy = findPolicyOrThrow(polizaId);
 
         if (STATE_CANCELADA.equals(policy.getState().getName())) {
             throw new BusinessException("Policy is already cancelled", HttpStatus.CONFLICT);
         }
 
-        RiskState cancelledRiskState = obtenerEstadoRiesgoOLanzarExcepcion(STATE_CANCELLED_RISK);
+        RiskState cancelledRiskState = findRiskStateOrThrow(STATE_CANCELLED_RISK);
 
         long riesgosCancelados = policy.getRisks().stream()
                 .filter(risk -> STATE_ACTIVE_RISK.equals(risk.getState().getName()))
                 .peek(risk -> risk.setState(cancelledRiskState))
                 .count();
 
-        policy.setState(obtenerEstadoOLanzarExcepcion(STATE_CANCELADA));
+        policy.setState(findStateOrThrow(STATE_CANCELADA));
 
         Policy saved = policyRepository.save(policy);
         coreMockService.notifyCore(saved, "POLICY_CANCELLED");
-        notificationRepository.save(crearNotificacion(saved, "POLICY_CANCELLED"));
+        notificationRepository.save(createNotification(saved, "POLICY_CANCELLED"));
 
         log.info("Póliza id={} cancelada con {} riesgos cancelados", polizaId, riesgosCancelados);
         return PolicyResponse.from(saved);
     }
 
-    private Policy buscarPolicyOLanzarExcepcion(UUID polizaId) {
+    private Policy findPolicyOrThrow(UUID polizaId) {
         return policyRepository.findById(polizaId)
                 .orElseThrow(() -> new ResourceNotFoundException(MSG_POLIZA_NO_ENCONTRADA + polizaId));
     }
 
-    private PolicyState obtenerEstadoOLanzarExcepcion(String name) {
+    private PolicyState findStateOrThrow(String name) {
         return policyStateRepository.findByName(name)
                 .orElseThrow(() -> new BusinessException("Estado de póliza no encontrado: " + name, HttpStatus.INTERNAL_SERVER_ERROR));
     }
 
-    private RiskState obtenerEstadoRiesgoOLanzarExcepcion(String name) {
+    private RiskState findRiskStateOrThrow(String name) {
         return riskStateRepository.findByName(name)
                 .orElseThrow(() -> new BusinessException("Estado de riesgo no encontrado: " + name, HttpStatus.INTERNAL_SERVER_ERROR));
     }
 
-    private BigDecimal calcularCanonConIpc(BigDecimal canon, Double ipc) {
+    private BigDecimal calculateCanonWithIpc(BigDecimal canon, Double ipc) {
         return canon.multiply(BigDecimal.ONE.add(BigDecimal.valueOf(ipc)));
     }
 
-    private BigDecimal calcularPrima(BigDecimal canon, Integer months) {
+    private BigDecimal calculatePremium(BigDecimal canon, Integer months) {
         return canon.multiply(BigDecimal.valueOf(months));
     }
 
-    private Notification crearNotificacion(Policy policy, String type) {
+    private Notification createNotification(Policy policy, String type) {
         return Notification.builder()
                 .policy(policy)
                 .type(type)

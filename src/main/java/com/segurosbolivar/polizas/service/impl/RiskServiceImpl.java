@@ -37,27 +37,27 @@ public class RiskServiceImpl implements RiskService {
     private final RiskRepository riskRepository;
     private final RiskStateRepository riskStateRepository;
     private final UserRepository userRepository;
-    private final PolicyValidationStrategy agregarRiskValidation;
+    private final PolicyValidationStrategy addRiskValidation;
 
     public RiskServiceImpl(
             PolicyRepository policyRepository,
             RiskRepository riskRepository,
             RiskStateRepository riskStateRepository,
             UserRepository userRepository,
-            @Qualifier("agregarRiskValidation") PolicyValidationStrategy agregarRiskValidation) {
+            @Qualifier("addRiskValidation") PolicyValidationStrategy addRiskValidation) {
         this.policyRepository = policyRepository;
         this.riskRepository = riskRepository;
         this.riskStateRepository = riskStateRepository;
         this.userRepository = userRepository;
-        this.agregarRiskValidation = agregarRiskValidation;
+        this.addRiskValidation = addRiskValidation;
     }
 
     @Override
     @Transactional
-    public RiskResponse agregarRiesgo(UUID polizaId, AgregarRiskRequest request) {
+    public RiskResponse addRisk(UUID polizaId, AgregarRiskRequest request) {
         log.info("Agregando riesgo a póliza id={}, insuredId={}", polizaId, request.getAseguradoId());
-        Policy policy = buscarPolicyOLanzarExcepcion(polizaId);
-        agregarRiskValidation.validate(policy);
+        Policy policy = findPolicyOrThrow(polizaId);
+        addRiskValidation.validate(policy);
 
         User insured = userRepository.findById(request.getAseguradoId())
                 .orElseThrow(() -> new ResourceNotFoundException("Usuario asegurado no encontrado con id: " + request.getAseguradoId()));
@@ -79,7 +79,7 @@ public class RiskServiceImpl implements RiskService {
 
     @Override
     @Transactional
-    public RiskResponse cancelarRiesgo(UUID riesgoId) {
+    public RiskResponse cancelRisk(UUID riesgoId) {
         log.info("Cancelando riesgo id={}", riesgoId);
         Risk risk = riskRepository.findById(riesgoId)
                 .orElseThrow(() -> new ResourceNotFoundException(MSG_RIESGO_NO_ENCONTRADO + riesgoId));
@@ -100,7 +100,7 @@ public class RiskServiceImpl implements RiskService {
     @Override
     @Transactional(readOnly = true)
     public Page<RiskResponse> listByPolicy(UUID polizaId, Pageable pageable) {
-        buscarPolicyOLanzarExcepcion(polizaId);
+        findPolicyOrThrow(polizaId);
         return riskRepository.findByPolicy_Id(polizaId, pageable).map(RiskResponse::from);
     }
 
@@ -112,7 +112,7 @@ public class RiskServiceImpl implements RiskService {
         return RiskResponse.from(risk);
     }
 
-    private Policy buscarPolicyOLanzarExcepcion(UUID polizaId) {
+    private Policy findPolicyOrThrow(UUID polizaId) {
         return policyRepository.findById(polizaId)
                 .orElseThrow(() -> new ResourceNotFoundException(MSG_POLIZA_NO_ENCONTRADA + polizaId));
     }

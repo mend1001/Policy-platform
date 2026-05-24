@@ -29,12 +29,12 @@ public class PolicyController {
     private final RiskService riskService;
 
     @GetMapping
-    public ResponseEntity<ApiResponse<Page<PolicyResponse>>> listarPolizas(
+    public ResponseEntity<ApiResponse<Page<PolicyResponse>>> listPolicies(
             @RequestParam(required = false) String tipo,
             @RequestParam(required = false) String estado,
             @PageableDefault(size = 10, sort = "startDate", direction = Sort.Direction.DESC) Pageable pageable) {
         return ResponseEntity.ok(
-                ApiResponse.ok(policyService.listarPolizas(tipo, estado, pageable), ApiMessages.POLICIES_LISTED));
+                ApiResponse.ok(policyService.listPolicies(tipo, estado, pageable), ApiMessages.POLICIES_LISTED));
     }
 
     @GetMapping("/{id}")
@@ -60,7 +60,7 @@ public class PolicyController {
     }
 
     @GetMapping("/{id}/risks")
-    public ResponseEntity<ApiResponse<Page<RiskResponse>>> listarRiesgos(
+    public ResponseEntity<ApiResponse<Page<RiskResponse>>> listRisks(
             @PathVariable UUID id,
             @PageableDefault(size = 10) Pageable pageable) {
         return ResponseEntity.ok(
@@ -68,24 +68,24 @@ public class PolicyController {
     }
 
     @PostMapping("/{id}/renovar")
-    public ResponseEntity<ApiResponse<PolicyResponse>> renovarPoliza(
+    public ResponseEntity<ApiResponse<PolicyResponse>> renewPolicy(
             @PathVariable UUID id,
             @RequestBody @Valid RenovarPolicyRequest request) {
         return ResponseEntity.ok(
-                ApiResponse.ok(policyService.renovarPoliza(id, request), ApiMessages.POLICY_RENEWED));
+                ApiResponse.ok(policyService.renewPolicy(id, request), ApiMessages.POLICY_RENEWED));
     }
 
     @PostMapping("/{id}/cancelar")
-    public ResponseEntity<ApiResponse<PolicyResponse>> cancelarPoliza(@PathVariable UUID id) {
+    public ResponseEntity<ApiResponse<PolicyResponse>> cancelPolicy(@PathVariable UUID id) {
         return ResponseEntity.ok(
-                ApiResponse.ok(policyService.cancelarPoliza(id), ApiMessages.POLICY_CANCELLED));
+                ApiResponse.ok(policyService.cancelPolicy(id), ApiMessages.POLICY_CANCELLED));
     }
 
     @PostMapping("/{id}/riesgos")
-    public ResponseEntity<ApiResponse<RiskResponse>> agregarRiesgo(
+    public ResponseEntity<ApiResponse<RiskResponse>> addRisk(
             @PathVariable UUID id,
             @RequestBody @Valid AgregarRiskRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(
-                ApiResponse.created(riskService.agregarRiesgo(id, request), ApiMessages.RISK_ADDED));
+                ApiResponse.created(riskService.addRisk(id, request), ApiMessages.RISK_ADDED));
     }
 }

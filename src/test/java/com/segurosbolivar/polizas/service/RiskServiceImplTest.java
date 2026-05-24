@@ -16,7 +16,7 @@ import com.segurosbolivar.polizas.repository.UserRepository;
 import com.segurosbolivar.polizas.repository.catalog.RiskStateRepository;
 import com.segurosbolivar.polizas.service.impl.RiskServiceImpl;
 import com.segurosbolivar.polizas.service.validation.PolicyValidationStrategy;
-import com.segurosbolivar.polizas.service.validation.impl.AgregarRiskValidation;
+import com.segurosbolivar.polizas.service.validation.impl.AddRiskValidation;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -60,7 +60,7 @@ class RiskServiceImplTest {
 
     @BeforeEach
     void setUp() {
-        agregarRiskValidation = new AgregarRiskValidation();
+        agregarRiskValidation = new AddRiskValidation();
         riskService = new RiskServiceImpl(
                 policyRepository, riskRepository, riskStateRepository,
                 userRepository, agregarRiskValidation);
@@ -82,7 +82,7 @@ class RiskServiceImplTest {
         when(riskRepository.save(any(Risk.class))).thenReturn(riesgoGuardado);
 
         AgregarRiskRequest request = new AgregarRiskRequest(insuredId, "Calle 100 # 9-67, Bogotá");
-        RiskResponse result = riskService.agregarRiesgo(polizaId, request);
+        RiskResponse result = riskService.addRisk(polizaId, request);
 
         assertThat(result.getState()).isEqualTo("ACTIVO");
         assertThat(result.getInsuredId()).isEqualTo(insuredId);
@@ -98,7 +98,7 @@ class RiskServiceImplTest {
 
         AgregarRiskRequest request = new AgregarRiskRequest(insuredId, "Calle 100 # 9-67");
 
-        assertThatThrownBy(() -> riskService.agregarRiesgo(polizaId, request))
+        assertThatThrownBy(() -> riskService.addRisk(polizaId, request))
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("COLECTIVA");
 
@@ -113,7 +113,7 @@ class RiskServiceImplTest {
 
         AgregarRiskRequest request = new AgregarRiskRequest(insuredId, "Calle 100");
 
-        assertThatThrownBy(() -> riskService.agregarRiesgo(polizaId, request))
+        assertThatThrownBy(() -> riskService.addRisk(polizaId, request))
                 .isInstanceOf(ResourceNotFoundException.class);
     }
 
@@ -133,7 +133,7 @@ class RiskServiceImplTest {
         when(riskStateRepository.findByName("CANCELADO")).thenReturn(Optional.of(canceladoState));
         when(riskRepository.save(any(Risk.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        RiskResponse result = riskService.cancelarRiesgo(riesgoId);
+        RiskResponse result = riskService.cancelRisk(riesgoId);
 
         assertThat(result.getState()).isEqualTo("CANCELADO");
         verify(riskRepository).save(risk);
@@ -144,7 +144,7 @@ class RiskServiceImplTest {
         UUID riesgoId = UUID.randomUUID();
         when(riskRepository.findById(riesgoId)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> riskService.cancelarRiesgo(riesgoId))
+        assertThatThrownBy(() -> riskService.cancelRisk(riesgoId))
                 .isInstanceOf(ResourceNotFoundException.class);
     }
 

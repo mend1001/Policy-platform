@@ -24,8 +24,8 @@ public class RiskController {
     }
 
     @PostMapping("/{id}/cancelar")
-    public ResponseEntity<ApiResponse<RiskResponse>> cancelarRiesgo(@PathVariable UUID id) {
+    public ResponseEntity<ApiResponse<RiskResponse>> cancelRisk(@PathVariable UUID id) {
         return ResponseEntity.ok(
-                ApiResponse.ok(riskService.cancelarRiesgo(id), ApiMessages.RISK_CANCELLED));
+                ApiResponse.ok(riskService.cancelRisk(id), ApiMessages.RISK_CANCELLED));
     }
 }

@@ -19,7 +19,7 @@ import com.segurosbolivar.polizas.repository.catalog.PolicyStateRepository;
 import com.segurosbolivar.polizas.repository.catalog.RiskStateRepository;
 import com.segurosbolivar.polizas.service.impl.PolicyServiceImpl;
 import com.segurosbolivar.polizas.service.validation.PolicyValidationStrategy;
-import com.segurosbolivar.polizas.service.validation.impl.RenovarPolicyValidation;
+import com.segurosbolivar.polizas.service.validation.impl.RenewPolicyValidation;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -70,7 +70,7 @@ class PolicyServiceImplTest {
 
     @BeforeEach
     void setUp() {
-        renovarPolicyValidation = new RenovarPolicyValidation();
+        renovarPolicyValidation = new RenewPolicyValidation();
         policyService = new PolicyServiceImpl(
                 policyRepository, policyStateRepository, riskStateRepository,
                 renewalRepository, notificationRepository, coreMockService, renovarPolicyValidation);
@@ -82,7 +82,7 @@ class PolicyServiceImplTest {
         List<Policy> policies = List.of(polizaActivaIndividual(), polizaActivaColectiva());
         when(policyRepository.findAll(pageable)).thenReturn(new PageImpl<>(policies));
 
-        Page<PolicyResponse> result = policyService.listarPolizas(null, null, pageable);
+        Page<PolicyResponse> result = policyService.listPolicies(null, null, pageable);
 
         assertThat(result.getContent()).hasSize(2);
         verify(policyRepository).findAll(pageable);
@@ -94,7 +94,7 @@ class PolicyServiceImplTest {
         when(policyRepository.findByType_Name("INDIVIDUAL", pageable))
                 .thenReturn(new PageImpl<>(List.of(polizaActivaIndividual())));
 
-        Page<PolicyResponse> result = policyService.listarPolizas("INDIVIDUAL", null, pageable);
+        Page<PolicyResponse> result = policyService.listPolicies("INDIVIDUAL", null, pageable);
 
         assertThat(result.getContent()).hasSize(1);
         assertThat(result.getContent().get(0).getType()).isEqualTo("INDIVIDUAL");
@@ -107,7 +107,7 @@ class PolicyServiceImplTest {
         when(policyRepository.findByState_Name("ACTIVA", pageable))
                 .thenReturn(new PageImpl<>(List.of(polizaActivaIndividual())));
 
-        Page<PolicyResponse> result = policyService.listarPolizas(null, "ACTIVA", pageable);
+        Page<PolicyResponse> result = policyService.listPolicies(null, "ACTIVA", pageable);
 
         assertThat(result.getContent()).hasSize(1);
         assertThat(result.getContent().get(0).getState()).isEqualTo("ACTIVA");
@@ -120,7 +120,7 @@ class PolicyServiceImplTest {
         when(policyRepository.findByType_NameAndState_Name("COLECTIVA", "ACTIVA", pageable))
                 .thenReturn(new PageImpl<>(List.of(polizaActivaColectiva())));
 
-        Page<PolicyResponse> result = policyService.listarPolizas("COLECTIVA", "ACTIVA", pageable);
+        Page<PolicyResponse> result = policyService.listPolicies("COLECTIVA", "ACTIVA", pageable);
 
         assertThat(result.getContent()).hasSize(1);
         verify(policyRepository).findByType_NameAndState_Name("COLECTIVA", "ACTIVA", pageable);
@@ -185,7 +185,7 @@ class PolicyServiceImplTest {
         when(policyRepository.save(any(Policy.class))).thenAnswer(inv -> inv.getArgument(0));
 
         RenovarPolicyRequest request = new RenovarPolicyRequest(0.09);
-        PolicyResponse result = policyService.renovarPoliza(id, request);
+        PolicyResponse result = policyService.renewPolicy(id, request);
 
         assertThat(result.getState()).isEqualTo("RENOVADA");
         assertThat(result.getCanon()).isGreaterThan(canonOriginal);
@@ -200,7 +200,7 @@ class PolicyServiceImplTest {
 
         RenovarPolicyRequest request = new RenovarPolicyRequest(0.09);
 
-        assertThatThrownBy(() -> policyService.renovarPoliza(id, request))
+        assertThatThrownBy(() -> policyService.renewPolicy(id, request))
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("cancelada");
 
@@ -220,7 +220,7 @@ class PolicyServiceImplTest {
         when(policyStateRepository.findByName("CANCELADA")).thenReturn(Optional.of(canceladaState));
         when(policyRepository.save(any(Policy.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        PolicyResponse result = policyService.cancelarPoliza(id);
+        PolicyResponse result = policyService.cancelPolicy(id);
 
         assertThat(result.getState()).isEqualTo("CANCELADA");
         assertThat(policy.getRisks()).allMatch(r -> "CANCELADO".equals(r.getState().getName()));
@@ -236,7 +236,7 @@ class PolicyServiceImplTest {
         when(policyStateRepository.findByName("RENOVADA")).thenReturn(Optional.of(estadoPoliza("RENOVADA")));
         when(policyRepository.save(any(Policy.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        policyService.renovarPoliza(id, new RenovarPolicyRequest(0.05));
+        policyService.renewPolicy(id, new RenovarPolicyRequest(0.05));
 
         verify(renewalRepository).save(any(Renewal.class));
     }
@@ -250,7 +250,7 @@ class PolicyServiceImplTest {
         when(policyStateRepository.findByName("RENOVADA")).thenReturn(Optional.of(estadoPoliza("RENOVADA")));
         when(policyRepository.save(any(Policy.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        policyService.renovarPoliza(id, new RenovarPolicyRequest(0.05));
+        policyService.renewPolicy(id, new RenovarPolicyRequest(0.05));
 
         verify(notificationRepository).save(any(Notification.class));
     }
@@ -265,7 +265,7 @@ class PolicyServiceImplTest {
         when(policyStateRepository.findByName("CANCELADA")).thenReturn(Optional.of(estadoPoliza("CANCELADA")));
         when(policyRepository.save(any(Policy.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        policyService.cancelarPoliza(id);
+        policyService.cancelPolicy(id);
 
         verify(notificationRepository).save(any(Notification.class));
     }
@@ -275,7 +275,7 @@ class PolicyServiceImplTest {
         UUID id = UUID.randomUUID();
         when(policyRepository.findById(id)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> policyService.cancelarPoliza(id))
+        assertThatThrownBy(() -> policyService.cancelPolicy(id))
                 .isInstanceOf(ResourceNotFoundException.class);
     }
 

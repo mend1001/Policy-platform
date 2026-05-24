@@ -9,7 +9,7 @@ import java.util.UUID;
 
 public interface PolicyService {
 
-    Page<PolicyResponse> listarPolizas(String tipo, String estado, Pageable pageable);
+    Page<PolicyResponse> listPolicies(String tipo, String estado, Pageable pageable);
 
     PolicyResponse findById(UUID id);
 
@@ -17,7 +17,7 @@ public interface PolicyService {
 
     Page<PolicyResponse> findByHolder(UUID holderId, Pageable pageable);
 
-    PolicyResponse renovarPoliza(UUID polizaId, RenovarPolicyRequest request);
+    PolicyResponse renewPolicy(UUID polizaId, RenovarPolicyRequest request);
 
-    PolicyResponse cancelarPoliza(UUID polizaId);
+    PolicyResponse cancelPolicy(UUID polizaId);
 }

@@ -6,8 +6,8 @@ import com.segurosbolivar.polizas.service.validation.PolicyValidationStrategy;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 
-@Component
-public class RenovarPolicyValidation implements PolicyValidationStrategy {
+@Component("renewPolicyValidation")
+public class RenewPolicyValidation implements PolicyValidationStrategy {
 
     private static final String MSG_NO_RENOVAR_CANCELADA = "No se puede renovar una póliza cancelada";
 

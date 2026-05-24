@@ -79,7 +79,7 @@ class RiskControllerTest {
                 .id(RISK_ID).policyId(POLICY_ID).insuredId(INSURED_ID)
                 .address("Calle 100 # 9-67, Bogotá").state("CANCELADO").build();
 
-        when(riskService.cancelarRiesgo(RISK_ID)).thenReturn(cancelado);
+        when(riskService.cancelRisk(RISK_ID)).thenReturn(cancelado);
 
         mockMvc.perform(post("/riesgos/" + RISK_ID + "/cancelar")
                         .header(API_KEY_HEADER, API_KEY_VALUE))
@@ -91,7 +91,7 @@ class RiskControllerTest {
 
     @Test
     void deberiaRetornar404AlCancelarRiesgoInexistente() throws Exception {
-        when(riskService.cancelarRiesgo(UNKNOWN_ID))
+        when(riskService.cancelRisk(UNKNOWN_ID))
                 .thenThrow(new ResourceNotFoundException("Riesgo no encontrado con id: " + UNKNOWN_ID));
 
         mockMvc.perform(post("/riesgos/" + UNKNOWN_ID + "/cancelar")

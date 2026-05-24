@@ -16,8 +16,8 @@ public class CoreMockController {
     private final CoreMockService coreMockService;
 
     @PostMapping("/evento")
-    public ResponseEntity<ApiResponse<Void>> procesarEvento(@RequestBody CoreEventRequest request) {
-        coreMockService.enviarEvento(request);
+    public ResponseEntity<ApiResponse<Void>> sendEvent(@RequestBody CoreEventRequest request) {
+        coreMockService.sendEvent(request);
         return ResponseEntity.ok(ApiResponse.ok(null, ApiMessages.CORE_NOTIFIED));
     }
 }

@@ -22,7 +22,7 @@ public class CoreMockServiceImpl implements CoreMockService {
     private final IntegrationEventRepository integrationEventRepository;
 
     @Override
-    public void enviarEvento(CoreEventRequest request) {
+    public void sendEvent(CoreEventRequest request) {
         log.info("Evento enviado al CORE: evento={}, polizaId={}", request.getEvento(), request.getPolizaId());
     }
 

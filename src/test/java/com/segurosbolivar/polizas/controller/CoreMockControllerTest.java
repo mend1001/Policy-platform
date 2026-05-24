@@ -45,7 +45,7 @@ class CoreMockControllerTest {
 
     @Test
     void deberiaRegistrarEventoEnCore() throws Exception {
-        doNothing().when(coreMockService).enviarEvento(any(CoreEventRequest.class));
+        doNothing().when(coreMockService).sendEvent(any(CoreEventRequest.class));
 
         CoreEventRequest request = CoreEventRequest.builder()
                 .evento("ACTUALIZACION")

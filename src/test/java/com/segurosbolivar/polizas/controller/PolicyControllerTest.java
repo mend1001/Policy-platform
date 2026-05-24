@@ -69,7 +69,7 @@ class PolicyControllerTest {
 
     @Test
     void deberiaListarTodasLasPolizas() throws Exception {
-        when(policyService.listarPolizas(isNull(), isNull(), any(Pageable.class)))
+        when(policyService.listPolicies(isNull(), isNull(), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of(polizaResponse())));
 
         mockMvc.perform(get("/polizas")
@@ -84,7 +84,7 @@ class PolicyControllerTest {
 
     @Test
     void deberiaResponderConEstructuraPaginadaCompleta() throws Exception {
-        when(policyService.listarPolizas(isNull(), isNull(), any(Pageable.class)))
+        when(policyService.listPolicies(isNull(), isNull(), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of(polizaResponse(), polizaColectivaResponse())));
 
         mockMvc.perform(get("/polizas")
@@ -101,7 +101,7 @@ class PolicyControllerTest {
 
     @Test
     void deberiaListarPolizasFiltrandoPorTipoYEstado() throws Exception {
-        when(policyService.listarPolizas(eq("COLECTIVA"), eq("ACTIVA"), any(Pageable.class)))
+        when(policyService.listPolicies(eq("COLECTIVA"), eq("ACTIVA"), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of(polizaColectivaResponse())));
 
         mockMvc.perform(get("/polizas")
@@ -203,7 +203,7 @@ class PolicyControllerTest {
                 .startDate(LocalDate.of(2024, 1, 1)).endDate(LocalDate.of(2025, 1, 1))
                 .months(12).holderId(HOLDER_ID).beneficiaryId(BENEFICIARY).build();
 
-        when(policyService.renovarPoliza(eq(POLICY_ID), any(RenovarPolicyRequest.class))).thenReturn(renovada);
+        when(policyService.renewPolicy(eq(POLICY_ID), any(RenovarPolicyRequest.class))).thenReturn(renovada);
 
         mockMvc.perform(post("/polizas/" + POLICY_ID + "/renovar")
                         .header(API_KEY_HEADER, API_KEY_VALUE)
@@ -216,7 +216,7 @@ class PolicyControllerTest {
 
     @Test
     void deberiaRetornar400AlRenovarPolizaCancelada() throws Exception {
-        when(policyService.renovarPoliza(eq(POLICY_ID), any(RenovarPolicyRequest.class)))
+        when(policyService.renewPolicy(eq(POLICY_ID), any(RenovarPolicyRequest.class)))
                 .thenThrow(new BusinessException("No se puede renovar una póliza cancelada", HttpStatus.BAD_REQUEST));
 
         mockMvc.perform(post("/polizas/" + POLICY_ID + "/renovar")
@@ -236,7 +236,7 @@ class PolicyControllerTest {
                 .startDate(LocalDate.of(2024, 1, 1)).endDate(LocalDate.of(2025, 1, 1))
                 .months(12).holderId(HOLDER_ID).beneficiaryId(BENEFICIARY).build();
 
-        when(policyService.cancelarPoliza(POLICY_ID)).thenReturn(cancelada);
+        when(policyService.cancelPolicy(POLICY_ID)).thenReturn(cancelada);
 
         mockMvc.perform(post("/polizas/" + POLICY_ID + "/cancelar")
                         .header(API_KEY_HEADER, API_KEY_VALUE))
@@ -247,7 +247,7 @@ class PolicyControllerTest {
 
     @Test
     void deberiaRetornar404AlCancelarPolizaInexistente() throws Exception {
-        when(policyService.cancelarPoliza(UNKNOWN_ID))
+        when(policyService.cancelPolicy(UNKNOWN_ID))
                 .thenThrow(new ResourceNotFoundException("Póliza no encontrada con id: " + UNKNOWN_ID));
 
         mockMvc.perform(post("/polizas/" + UNKNOWN_ID + "/cancelar")
@@ -270,7 +270,7 @@ class PolicyControllerTest {
 
     @Test
     void deberiaAgregarRiesgoAPolizaColectiva() throws Exception {
-        when(riskService.agregarRiesgo(eq(POLICY_COL), any(AgregarRiskRequest.class))).thenReturn(riskResponse());
+        when(riskService.addRisk(eq(POLICY_COL), any(AgregarRiskRequest.class))).thenReturn(riskResponse());
 
         mockMvc.perform(post("/polizas/" + POLICY_COL + "/riesgos")
                         .header(API_KEY_HEADER, API_KEY_VALUE)
@@ -284,7 +284,7 @@ class PolicyControllerTest {
 
     @Test
     void deberiaRetornar400AlAgregarRiesgoAPolizaIndividual() throws Exception {
-        when(riskService.agregarRiesgo(eq(POLICY_ID), any(AgregarRiskRequest.class)))
+        when(riskService.addRisk(eq(POLICY_ID), any(AgregarRiskRequest.class)))
                 .thenThrow(new BusinessException("Solo se pueden agregar riesgos a pólizas de tipo COLECTIVA",
                         HttpStatus.BAD_REQUEST));
 
