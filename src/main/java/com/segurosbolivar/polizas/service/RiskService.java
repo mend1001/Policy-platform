@@ -14,4 +14,6 @@ public interface RiskService {
     RiskResponse cancelarRiesgo(UUID riesgoId);
 
     Page<RiskResponse> listByPolicy(UUID polizaId, Pageable pageable);
+
+    RiskResponse findById(UUID id);
 }

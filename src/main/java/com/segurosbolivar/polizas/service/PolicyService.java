@@ -11,6 +11,12 @@ public interface PolicyService {
 
     Page<PolicyResponse> listarPolizas(String tipo, String estado, Pageable pageable);
 
+    PolicyResponse findById(UUID id);
+
+    Page<PolicyResponse> findByBeneficiary(UUID beneficiaryId, Pageable pageable);
+
+    Page<PolicyResponse> findByHolder(UUID holderId, Pageable pageable);
+
     PolicyResponse renovarPoliza(UUID polizaId, RenovarPolicyRequest request);
 
     PolicyResponse cancelarPoliza(UUID polizaId);

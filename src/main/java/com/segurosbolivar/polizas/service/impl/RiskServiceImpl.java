@@ -100,6 +100,14 @@ public class RiskServiceImpl implements RiskService {
         return riskRepository.findByPolicy_Id(polizaId, pageable).map(RiskResponse::from);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public RiskResponse findById(UUID id) {
+        Risk risk = riskRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException(MSG_RIESGO_NO_ENCONTRADO + id));
+        return RiskResponse.from(risk);
+    }
+
     private Policy buscarPolicyOLanzarExcepcion(UUID polizaId) {
         return policyRepository.findById(polizaId)
                 .orElseThrow(() -> new ResourceNotFoundException(MSG_POLIZA_NO_ENCONTRADA + polizaId));
