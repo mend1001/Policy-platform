@@ -1,120 +1,182 @@
 package com.segurosbolivar.polizas.service.impl;
 
-import com.segurosbolivar.polizas.dto.request.CoreEventRequest;
 import com.segurosbolivar.polizas.dto.request.RenovarPolicyRequest;
 import com.segurosbolivar.polizas.dto.response.PolicyResponse;
 import com.segurosbolivar.polizas.dto.response.RiskResponse;
+import com.segurosbolivar.polizas.exception.BusinessException;
 import com.segurosbolivar.polizas.exception.ResourceNotFoundException;
+import com.segurosbolivar.polizas.model.Notification;
 import com.segurosbolivar.polizas.model.Policy;
-import com.segurosbolivar.polizas.model.enums.PolicyState;
-import com.segurosbolivar.polizas.model.enums.PolicyType;
-import com.segurosbolivar.polizas.model.enums.RiskState;
+import com.segurosbolivar.polizas.model.Renewal;
+import com.segurosbolivar.polizas.model.catalog.PolicyState;
+import com.segurosbolivar.polizas.model.catalog.RiskState;
+import com.segurosbolivar.polizas.repository.NotificationRepository;
 import com.segurosbolivar.polizas.repository.PolicyRepository;
+import com.segurosbolivar.polizas.repository.RenewalRepository;
+import com.segurosbolivar.polizas.repository.catalog.PolicyStateRepository;
+import com.segurosbolivar.polizas.repository.catalog.RiskStateRepository;
 import com.segurosbolivar.polizas.service.CoreMockService;
 import com.segurosbolivar.polizas.service.PolicyService;
 import com.segurosbolivar.polizas.service.validation.PolicyValidationStrategy;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.UUID;
 
+@Slf4j
 @Service
 public class PolicyServiceImpl implements PolicyService {
 
-    private static final String EVENTO_ACTUALIZACION = "ACTUALIZACION";
     private static final String MSG_POLIZA_NO_ENCONTRADA = "Póliza no encontrada con id: ";
+    private static final String STATE_RENOVADA = "RENOVADA";
+    private static final String STATE_CANCELADA = "CANCELADA";
+    private static final String STATE_ACTIVE_RISK = "ACTIVO";
+    private static final String STATE_CANCELLED_RISK = "CANCELADO";
 
     private final PolicyRepository policyRepository;
+    private final PolicyStateRepository policyStateRepository;
+    private final RiskStateRepository riskStateRepository;
+    private final RenewalRepository renewalRepository;
+    private final NotificationRepository notificationRepository;
     private final CoreMockService coreMockService;
     private final PolicyValidationStrategy renovarPolicyValidation;
 
     public PolicyServiceImpl(
             PolicyRepository policyRepository,
+            PolicyStateRepository policyStateRepository,
+            RiskStateRepository riskStateRepository,
+            RenewalRepository renewalRepository,
+            NotificationRepository notificationRepository,
             CoreMockService coreMockService,
             @Qualifier("renovarPolicyValidation") PolicyValidationStrategy renovarPolicyValidation) {
         this.policyRepository = policyRepository;
+        this.policyStateRepository = policyStateRepository;
+        this.riskStateRepository = riskStateRepository;
+        this.renewalRepository = renewalRepository;
+        this.notificationRepository = notificationRepository;
         this.coreMockService = coreMockService;
         this.renovarPolicyValidation = renovarPolicyValidation;
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<PolicyResponse> listarPolizas(PolicyType tipo, PolicyState estado) {
+    public List<PolicyResponse> listarPolizas(String tipo, String estado) {
         List<Policy> policies = buscarPoliciesConFiltros(tipo, estado);
         return policies.stream().map(PolicyResponse::from).toList();
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<RiskResponse> listarRiesgos(Long polizaId) {
+    public List<RiskResponse> listarRiesgos(UUID polizaId) {
         Policy policy = buscarPolicyOLanzarExcepcion(polizaId);
-        return policy.getRiesgos().stream().map(RiskResponse::from).toList();
+        return policy.getRisks().stream().map(RiskResponse::from).toList();
     }
 
     @Override
     @Transactional
-    public PolicyResponse renovarPoliza(Long polizaId, RenovarPolicyRequest request) {
+    public PolicyResponse renovarPoliza(UUID polizaId, RenovarPolicyRequest request) {
+        log.info("Renovando póliza id={}, ipc={}", polizaId, request.getIpc());
         Policy policy = buscarPolicyOLanzarExcepcion(polizaId);
         renovarPolicyValidation.validate(policy);
 
-        BigDecimal canonActualizado = calcularCanonConIpc(policy.getCanon(), request.getIpc());
-        BigDecimal primaActualizada = calcularPrima(canonActualizado, policy);
+        BigDecimal canonBefore = policy.getCanon();
+        BigDecimal premiumBefore = policy.getPremium();
 
-        policy.setCanon(canonActualizado);
-        policy.setPrima(primaActualizada);
-        policy.setEstado(PolicyState.RENOVADA);
+        BigDecimal canonAfter = calcularCanonConIpc(canonBefore, request.getIpc());
+        BigDecimal premiumAfter = calcularPrima(canonAfter, policy.getMonths());
+
+        policy.setCanon(canonAfter);
+        policy.setPremium(premiumAfter);
+        policy.setState(obtenerEstadoOLanzarExcepcion(STATE_RENOVADA));
 
         Policy saved = policyRepository.save(policy);
-        notificarCore(polizaId);
 
+        Renewal renewal = Renewal.builder()
+                .policy(saved)
+                .canonBefore(canonBefore)
+                .canonAfter(canonAfter)
+                .premiumBefore(premiumBefore)
+                .premiumAfter(premiumAfter)
+                .ipcApplied(BigDecimal.valueOf(request.getIpc()))
+                .type("MANUAL")
+                .result("SUCCESS")
+                .coreSyncStatus("PENDING")
+                .build();
+        renewalRepository.save(renewal);
+
+        coreMockService.notifyCore(saved, "POLICY_RENEWED");
+        notificationRepository.save(crearNotificacion(saved, "POLICY_RENEWED"));
+
+        log.info("Póliza id={} renovada exitosamente. Nuevo canon={}", polizaId, canonAfter);
         return PolicyResponse.from(saved);
     }
 
     @Override
     @Transactional
-    public PolicyResponse cancelarPoliza(Long polizaId) {
+    public PolicyResponse cancelarPoliza(UUID polizaId) {
+        log.info("Cancelando póliza id={}", polizaId);
         Policy policy = buscarPolicyOLanzarExcepcion(polizaId);
 
-        policy.getRiesgos().stream()
-                .filter(risk -> RiskState.ACTIVO.equals(risk.getEstado()))
-                .forEach(risk -> risk.setEstado(RiskState.CANCELADO));
+        RiskState cancelledRiskState = obtenerEstadoRiesgoOLanzarExcepcion(STATE_CANCELLED_RISK);
 
-        policy.setEstado(PolicyState.CANCELADA);
+        long riesgosCancelados = policy.getRisks().stream()
+                .filter(risk -> STATE_ACTIVE_RISK.equals(risk.getState().getName()))
+                .peek(risk -> risk.setState(cancelledRiskState))
+                .count();
+
+        policy.setState(obtenerEstadoOLanzarExcepcion(STATE_CANCELADA));
 
         Policy saved = policyRepository.save(policy);
-        notificarCore(polizaId);
+        coreMockService.notifyCore(saved, "POLICY_CANCELLED");
+        notificationRepository.save(crearNotificacion(saved, "POLICY_CANCELLED"));
 
+        log.info("Póliza id={} cancelada con {} riesgos cancelados", polizaId, riesgosCancelados);
         return PolicyResponse.from(saved);
     }
 
-    private List<Policy> buscarPoliciesConFiltros(PolicyType tipo, PolicyState estado) {
-        if (tipo != null && estado != null) return policyRepository.findByTipoAndEstado(tipo, estado);
-        if (tipo != null) return policyRepository.findByTipo(tipo);
-        if (estado != null) return policyRepository.findByEstado(estado);
+    private List<Policy> buscarPoliciesConFiltros(String tipo, String estado) {
+        if (tipo != null && estado != null) return policyRepository.findByType_NameAndState_Name(tipo, estado);
+        if (tipo != null) return policyRepository.findByType_Name(tipo);
+        if (estado != null) return policyRepository.findByState_Name(estado);
         return policyRepository.findAll();
     }
 
-    private Policy buscarPolicyOLanzarExcepcion(Long polizaId) {
+    private Policy buscarPolicyOLanzarExcepcion(UUID polizaId) {
         return policyRepository.findById(polizaId)
                 .orElseThrow(() -> new ResourceNotFoundException(MSG_POLIZA_NO_ENCONTRADA + polizaId));
+    }
+
+    private PolicyState obtenerEstadoOLanzarExcepcion(String name) {
+        return policyStateRepository.findByName(name)
+                .orElseThrow(() -> new BusinessException("Estado de póliza no encontrado: " + name, HttpStatus.INTERNAL_SERVER_ERROR));
+    }
+
+    private RiskState obtenerEstadoRiesgoOLanzarExcepcion(String name) {
+        return riskStateRepository.findByName(name)
+                .orElseThrow(() -> new BusinessException("Estado de riesgo no encontrado: " + name, HttpStatus.INTERNAL_SERVER_ERROR));
     }
 
     private BigDecimal calcularCanonConIpc(BigDecimal canon, Double ipc) {
         return canon.multiply(BigDecimal.ONE.add(BigDecimal.valueOf(ipc)));
     }
 
-    private BigDecimal calcularPrima(BigDecimal canon, Policy policy) {
-        long meses = ChronoUnit.MONTHS.between(policy.getFechaInicio(), policy.getFechaFin());
-        return canon.multiply(BigDecimal.valueOf(meses));
+    private BigDecimal calcularPrima(BigDecimal canon, Integer months) {
+        return canon.multiply(BigDecimal.valueOf(months));
     }
 
-    private void notificarCore(Long polizaId) {
-        coreMockService.enviarEvento(CoreEventRequest.builder()
-                .evento(EVENTO_ACTUALIZACION)
-                .polizaId(polizaId)
-                .build());
+    private Notification crearNotificacion(Policy policy, String type) {
+        return Notification.builder()
+                .policy(policy)
+                .type(type)
+                .channel("EMAIL")
+                .recipient(policy.getHolder().getEmail())
+                .state("PENDING")
+                .build();
     }
+
 }

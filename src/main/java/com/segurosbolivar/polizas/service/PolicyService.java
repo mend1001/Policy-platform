@@ -3,18 +3,17 @@ package com.segurosbolivar.polizas.service;
 import com.segurosbolivar.polizas.dto.request.RenovarPolicyRequest;
 import com.segurosbolivar.polizas.dto.response.PolicyResponse;
 import com.segurosbolivar.polizas.dto.response.RiskResponse;
-import com.segurosbolivar.polizas.model.enums.PolicyState;
-import com.segurosbolivar.polizas.model.enums.PolicyType;
 
 import java.util.List;
+import java.util.UUID;
 
 public interface PolicyService {
 
-    List<PolicyResponse> listarPolizas(PolicyType tipo, PolicyState estado);
+    List<PolicyResponse> listarPolizas(String tipo, String estado);
 
-    List<RiskResponse> listarRiesgos(Long polizaId);
+    List<RiskResponse> listarRiesgos(UUID polizaId);
 
-    PolicyResponse renovarPoliza(Long polizaId, RenovarPolicyRequest request);
+    PolicyResponse renovarPoliza(UUID polizaId, RenovarPolicyRequest request);
 
-    PolicyResponse cancelarPoliza(Long polizaId);
+    PolicyResponse cancelarPoliza(UUID polizaId);
 }

@@ -5,12 +5,19 @@ import com.segurosbolivar.polizas.dto.response.PolicyResponse;
 import com.segurosbolivar.polizas.dto.response.RiskResponse;
 import com.segurosbolivar.polizas.exception.BusinessException;
 import com.segurosbolivar.polizas.exception.ResourceNotFoundException;
+import com.segurosbolivar.polizas.model.Notification;
 import com.segurosbolivar.polizas.model.Policy;
+import com.segurosbolivar.polizas.model.Renewal;
 import com.segurosbolivar.polizas.model.Risk;
-import com.segurosbolivar.polizas.model.enums.PolicyState;
-import com.segurosbolivar.polizas.model.enums.PolicyType;
-import com.segurosbolivar.polizas.model.enums.RiskState;
+import com.segurosbolivar.polizas.model.User;
+import com.segurosbolivar.polizas.model.catalog.PolicyState;
+import com.segurosbolivar.polizas.model.catalog.PolicyType;
+import com.segurosbolivar.polizas.model.catalog.RiskState;
+import com.segurosbolivar.polizas.repository.NotificationRepository;
 import com.segurosbolivar.polizas.repository.PolicyRepository;
+import com.segurosbolivar.polizas.repository.RenewalRepository;
+import com.segurosbolivar.polizas.repository.catalog.PolicyStateRepository;
+import com.segurosbolivar.polizas.repository.catalog.RiskStateRepository;
 import com.segurosbolivar.polizas.service.impl.PolicyServiceImpl;
 import com.segurosbolivar.polizas.service.validation.PolicyValidationStrategy;
 import com.segurosbolivar.polizas.service.validation.impl.RenovarPolicyValidation;
@@ -25,10 +32,12 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -36,6 +45,18 @@ class PolicyServiceImplTest {
 
     @Mock
     private PolicyRepository policyRepository;
+
+    @Mock
+    private PolicyStateRepository policyStateRepository;
+
+    @Mock
+    private RiskStateRepository riskStateRepository;
+
+    @Mock
+    private RenewalRepository renewalRepository;
+
+    @Mock
+    private NotificationRepository notificationRepository;
 
     @Mock
     private CoreMockService coreMockService;
@@ -46,7 +67,9 @@ class PolicyServiceImplTest {
     @BeforeEach
     void setUp() {
         renovarPolicyValidation = new RenovarPolicyValidation();
-        policyService = new PolicyServiceImpl(policyRepository, coreMockService, renovarPolicyValidation);
+        policyService = new PolicyServiceImpl(
+                policyRepository, policyStateRepository, riskStateRepository,
+                renewalRepository, notificationRepository, coreMockService, renovarPolicyValidation);
     }
 
     @Test
@@ -62,78 +85,85 @@ class PolicyServiceImplTest {
 
     @Test
     void deberiaListarPolizasFiltrandoPorTipo() {
-        when(policyRepository.findByTipo(PolicyType.INDIVIDUAL)).thenReturn(List.of(polizaActivaIndividual()));
+        when(policyRepository.findByType_Name("INDIVIDUAL")).thenReturn(List.of(polizaActivaIndividual()));
 
-        List<PolicyResponse> result = policyService.listarPolizas(PolicyType.INDIVIDUAL, null);
+        List<PolicyResponse> result = policyService.listarPolizas("INDIVIDUAL", null);
 
         assertThat(result).hasSize(1);
-        assertThat(result.get(0).getTipo()).isEqualTo(PolicyType.INDIVIDUAL);
-        verify(policyRepository).findByTipo(PolicyType.INDIVIDUAL);
+        assertThat(result.get(0).getType()).isEqualTo("INDIVIDUAL");
+        verify(policyRepository).findByType_Name("INDIVIDUAL");
     }
 
     @Test
     void deberiaListarPolizasFiltrandoPorEstado() {
-        when(policyRepository.findByEstado(PolicyState.ACTIVA)).thenReturn(List.of(polizaActivaIndividual()));
+        when(policyRepository.findByState_Name("ACTIVA")).thenReturn(List.of(polizaActivaIndividual()));
 
-        List<PolicyResponse> result = policyService.listarPolizas(null, PolicyState.ACTIVA);
+        List<PolicyResponse> result = policyService.listarPolizas(null, "ACTIVA");
 
         assertThat(result).hasSize(1);
-        assertThat(result.get(0).getEstado()).isEqualTo(PolicyState.ACTIVA);
-        verify(policyRepository).findByEstado(PolicyState.ACTIVA);
+        assertThat(result.get(0).getState()).isEqualTo("ACTIVA");
+        verify(policyRepository).findByState_Name("ACTIVA");
     }
 
     @Test
     void deberiaListarPolizasFiltrandoPorTipoYEstado() {
-        when(policyRepository.findByTipoAndEstado(PolicyType.COLECTIVA, PolicyState.ACTIVA))
+        when(policyRepository.findByType_NameAndState_Name("COLECTIVA", "ACTIVA"))
                 .thenReturn(List.of(polizaActivaColectiva()));
 
-        List<PolicyResponse> result = policyService.listarPolizas(PolicyType.COLECTIVA, PolicyState.ACTIVA);
+        List<PolicyResponse> result = policyService.listarPolizas("COLECTIVA", "ACTIVA");
 
         assertThat(result).hasSize(1);
-        verify(policyRepository).findByTipoAndEstado(PolicyType.COLECTIVA, PolicyState.ACTIVA);
+        verify(policyRepository).findByType_NameAndState_Name("COLECTIVA", "ACTIVA");
     }
 
     @Test
     void deberiaListarRiesgosDeLaPoliza() {
-        Policy policy = polizaActivaColectivaConRiesgos();
-        when(policyRepository.findById(1L)).thenReturn(Optional.of(policy));
+        UUID id = UUID.randomUUID();
+        Policy policy = polizaActivaColectivaConRiesgos(id);
+        when(policyRepository.findById(id)).thenReturn(Optional.of(policy));
 
-        List<RiskResponse> result = policyService.listarRiesgos(1L);
+        List<RiskResponse> result = policyService.listarRiesgos(id);
 
         assertThat(result).hasSize(2);
     }
 
     @Test
     void deberiaLanzarExcepcionAlListarRiesgosDePolicyInexistente() {
-        when(policyRepository.findById(99L)).thenReturn(Optional.empty());
+        UUID id = UUID.randomUUID();
+        when(policyRepository.findById(id)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> policyService.listarRiesgos(99L))
+        assertThatThrownBy(() -> policyService.listarRiesgos(id))
                 .isInstanceOf(ResourceNotFoundException.class);
     }
 
     @Test
     void deberiaRenovarPolizaExitosamente() {
-        Policy policy = polizaActivaIndividual();
+        UUID id = UUID.randomUUID();
+        Policy policy = polizaActivaIndividual(id);
         BigDecimal canonOriginal = policy.getCanon();
-        when(policyRepository.findById(1L)).thenReturn(Optional.of(policy));
+
+        PolicyState renovadaState = estadoPoliza("RENOVADA");
+        when(policyRepository.findById(id)).thenReturn(Optional.of(policy));
+        when(policyStateRepository.findByName("RENOVADA")).thenReturn(Optional.of(renovadaState));
         when(policyRepository.save(any(Policy.class))).thenAnswer(inv -> inv.getArgument(0));
 
         RenovarPolicyRequest request = new RenovarPolicyRequest(0.09);
-        PolicyResponse result = policyService.renovarPoliza(1L, request);
+        PolicyResponse result = policyService.renovarPoliza(id, request);
 
-        assertThat(result.getEstado()).isEqualTo(PolicyState.RENOVADA);
+        assertThat(result.getState()).isEqualTo("RENOVADA");
         assertThat(result.getCanon()).isGreaterThan(canonOriginal);
-        verify(coreMockService).enviarEvento(any());
+        verify(coreMockService).notifyCore(any(Policy.class), anyString());
     }
 
     @Test
     void deberiaLanzarExcepcionSiPolizaCancelada() {
-        Policy policy = polizaCancelada();
-        when(policyRepository.findById(1L)).thenReturn(Optional.of(policy));
+        UUID id = UUID.randomUUID();
+        Policy policy = polizaCancelada(id);
+        when(policyRepository.findById(id)).thenReturn(Optional.of(policy));
 
         RenovarPolicyRequest request = new RenovarPolicyRequest(0.09);
 
-        assertThatThrownBy(() -> policyService.renovarPoliza(1L, request))
+        assertThatThrownBy(() -> policyService.renovarPoliza(id, request))
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("cancelada");
 
@@ -142,78 +172,169 @@ class PolicyServiceImplTest {
 
     @Test
     void deberiaCancelarPolizaYSusRiesgosActivos() {
-        Policy policy = polizaActivaColectivaConRiesgos();
-        when(policyRepository.findById(1L)).thenReturn(Optional.of(policy));
+        UUID id = UUID.randomUUID();
+        Policy policy = polizaActivaColectivaConRiesgos(id);
+
+        PolicyState canceladaState = estadoPoliza("CANCELADA");
+        RiskState canceladoRiskState = estadoRiesgo("CANCELADO");
+
+        when(policyRepository.findById(id)).thenReturn(Optional.of(policy));
+        when(riskStateRepository.findByName("CANCELADO")).thenReturn(Optional.of(canceladoRiskState));
+        when(policyStateRepository.findByName("CANCELADA")).thenReturn(Optional.of(canceladaState));
         when(policyRepository.save(any(Policy.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        PolicyResponse result = policyService.cancelarPoliza(1L);
+        PolicyResponse result = policyService.cancelarPoliza(id);
 
-        assertThat(result.getEstado()).isEqualTo(PolicyState.CANCELADA);
-        assertThat(policy.getRiesgos()).allMatch(r -> r.getEstado() == RiskState.CANCELADO);
-        verify(coreMockService).enviarEvento(any());
+        assertThat(result.getState()).isEqualTo("CANCELADA");
+        assertThat(policy.getRisks()).allMatch(r -> "CANCELADO".equals(r.getState().getName()));
+        verify(coreMockService).notifyCore(any(Policy.class), anyString());
+    }
+
+    @Test
+    void deberiaGuardarRenovationAlRenovar() {
+        UUID id = UUID.randomUUID();
+        Policy policy = polizaActivaIndividual(id);
+
+        when(policyRepository.findById(id)).thenReturn(Optional.of(policy));
+        when(policyStateRepository.findByName("RENOVADA")).thenReturn(Optional.of(estadoPoliza("RENOVADA")));
+        when(policyRepository.save(any(Policy.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        policyService.renovarPoliza(id, new RenovarPolicyRequest(0.05));
+
+        verify(renewalRepository).save(any(Renewal.class));
+    }
+
+    @Test
+    void deberiaGuardarNotificacionAlRenovar() {
+        UUID id = UUID.randomUUID();
+        Policy policy = polizaActivaIndividual(id);
+
+        when(policyRepository.findById(id)).thenReturn(Optional.of(policy));
+        when(policyStateRepository.findByName("RENOVADA")).thenReturn(Optional.of(estadoPoliza("RENOVADA")));
+        when(policyRepository.save(any(Policy.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        policyService.renovarPoliza(id, new RenovarPolicyRequest(0.05));
+
+        verify(notificationRepository).save(any(Notification.class));
+    }
+
+    @Test
+    void deberiaGuardarNotificacionAlCancelar() {
+        UUID id = UUID.randomUUID();
+        Policy policy = polizaActivaColectivaConRiesgos(id);
+
+        when(policyRepository.findById(id)).thenReturn(Optional.of(policy));
+        when(riskStateRepository.findByName("CANCELADO")).thenReturn(Optional.of(estadoRiesgo("CANCELADO")));
+        when(policyStateRepository.findByName("CANCELADA")).thenReturn(Optional.of(estadoPoliza("CANCELADA")));
+        when(policyRepository.save(any(Policy.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        policyService.cancelarPoliza(id);
+
+        verify(notificationRepository).save(any(Notification.class));
     }
 
     @Test
     void deberiaLanzarExcepcionAlCancelarPolizaInexistente() {
-        when(policyRepository.findById(99L)).thenReturn(Optional.empty());
+        UUID id = UUID.randomUUID();
+        when(policyRepository.findById(id)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> policyService.cancelarPoliza(99L))
+        assertThatThrownBy(() -> policyService.cancelarPoliza(id))
                 .isInstanceOf(ResourceNotFoundException.class);
     }
 
-    private Policy polizaActivaIndividual() {
+    // ── helpers ──────────────────────────────────────────────────────────────
+
+    private PolicyType tipoPolitica(String name) {
+        return PolicyType.builder().id(UUID.randomUUID()).name(name).build();
+    }
+
+    private PolicyState estadoPoliza(String name) {
+        return PolicyState.builder().id(UUID.randomUUID()).name(name).build();
+    }
+
+    private RiskState estadoRiesgo(String name) {
+        return RiskState.builder().id(UUID.randomUUID()).name(name).build();
+    }
+
+    private User usuario() {
+        return User.builder().id(UUID.randomUUID()).name("Test").email("test@email.com")
+                .docType("CC").docNumber(UUID.randomUUID().toString()).build();
+    }
+
+    private Policy polizaActivaIndividual(UUID id) {
         return Policy.builder()
-                .id(1L)
-                .tipo(PolicyType.INDIVIDUAL)
-                .estado(PolicyState.ACTIVA)
+                .id(id)
+                .type(tipoPolitica("INDIVIDUAL"))
+                .state(estadoPoliza("ACTIVA"))
+                .holder(usuario())
+                .beneficiary(usuario())
                 .canon(new BigDecimal("1500000.00"))
-                .prima(new BigDecimal("18000000.00"))
-                .fechaInicio(LocalDate.of(2024, 1, 1))
-                .fechaFin(LocalDate.of(2025, 1, 1))
-                .tomadorId(1L)
-                .beneficiarioId(2L)
-                .riesgos(new ArrayList<>())
+                .premium(new BigDecimal("18000000.00"))
+                .months(12)
+                .startDate(LocalDate.of(2024, 1, 1))
+                .endDate(LocalDate.of(2025, 1, 1))
+                .risks(new ArrayList<>())
                 .build();
+    }
+
+    private Policy polizaActivaIndividual() {
+        return polizaActivaIndividual(UUID.randomUUID());
     }
 
     private Policy polizaActivaColectiva() {
         return Policy.builder()
-                .id(2L)
-                .tipo(PolicyType.COLECTIVA)
-                .estado(PolicyState.ACTIVA)
+                .id(UUID.randomUUID())
+                .type(tipoPolitica("COLECTIVA"))
+                .state(estadoPoliza("ACTIVA"))
+                .holder(usuario())
+                .beneficiary(usuario())
                 .canon(new BigDecimal("3500000.00"))
-                .prima(new BigDecimal("84000000.00"))
-                .fechaInicio(LocalDate.of(2024, 1, 1))
-                .fechaFin(LocalDate.of(2026, 1, 1))
-                .tomadorId(5L)
-                .beneficiarioId(6L)
-                .riesgos(new ArrayList<>())
+                .premium(new BigDecimal("84000000.00"))
+                .months(24)
+                .startDate(LocalDate.of(2024, 1, 1))
+                .endDate(LocalDate.of(2026, 1, 1))
+                .risks(new ArrayList<>())
                 .build();
     }
 
-    private Policy polizaActivaColectivaConRiesgos() {
-        Policy policy = polizaActivaColectiva();
-        Risk riesgo1 = Risk.builder().id(1L).poliza(policy).aseguradoId(10L)
-                .direccion("Calle 72 # 10-34").estado(RiskState.ACTIVO).build();
-        Risk riesgo2 = Risk.builder().id(2L).poliza(policy).aseguradoId(11L)
-                .direccion("Carrera 15 # 93-45").estado(RiskState.ACTIVO).build();
-        policy.getRiesgos().add(riesgo1);
-        policy.getRiesgos().add(riesgo2);
+    private Policy polizaActivaColectivaConRiesgos(UUID policyId) {
+        Policy policy = Policy.builder()
+                .id(policyId)
+                .type(tipoPolitica("COLECTIVA"))
+                .state(estadoPoliza("ACTIVA"))
+                .holder(usuario())
+                .beneficiary(usuario())
+                .canon(new BigDecimal("3500000.00"))
+                .premium(new BigDecimal("84000000.00"))
+                .months(24)
+                .startDate(LocalDate.of(2024, 1, 1))
+                .endDate(LocalDate.of(2026, 1, 1))
+                .risks(new ArrayList<>())
+                .build();
+
+        RiskState activoState = estadoRiesgo("ACTIVO");
+        Risk r1 = Risk.builder().id(UUID.randomUUID()).policy(policy).insured(usuario())
+                .address("Calle 72 # 10-34").state(activoState).build();
+        Risk r2 = Risk.builder().id(UUID.randomUUID()).policy(policy).insured(usuario())
+                .address("Carrera 15 # 93-45").state(activoState).build();
+        policy.getRisks().add(r1);
+        policy.getRisks().add(r2);
         return policy;
     }
 
-    private Policy polizaCancelada() {
+    private Policy polizaCancelada(UUID id) {
         return Policy.builder()
-                .id(1L)
-                .tipo(PolicyType.INDIVIDUAL)
-                .estado(PolicyState.CANCELADA)
+                .id(id)
+                .type(tipoPolitica("INDIVIDUAL"))
+                .state(estadoPoliza("CANCELADA"))
+                .holder(usuario())
+                .beneficiary(usuario())
                 .canon(new BigDecimal("1500000.00"))
-                .prima(new BigDecimal("18000000.00"))
-                .fechaInicio(LocalDate.of(2024, 1, 1))
-                .fechaFin(LocalDate.of(2025, 1, 1))
-                .tomadorId(1L)
-                .beneficiarioId(2L)
-                .riesgos(new ArrayList<>())
+                .premium(new BigDecimal("18000000.00"))
+                .months(12)
+                .startDate(LocalDate.of(2024, 1, 1))
+                .endDate(LocalDate.of(2025, 1, 1))
+                .risks(new ArrayList<>())
                 .build();
     }
 }
