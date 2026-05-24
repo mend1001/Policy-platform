@@ -1,6 +1,7 @@
 package com.segurosbolivar.polizas.controller;
 
 import com.segurosbolivar.polizas.config.AppProperties;
+import com.segurosbolivar.polizas.dto.response.ApiMessages;
 import com.segurosbolivar.polizas.dto.request.CoreEventRequest;
 import com.segurosbolivar.polizas.service.CoreMockService;
 import org.junit.jupiter.api.BeforeEach;
@@ -56,7 +57,9 @@ class CoreMockControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.mensaje").value("Evento registrado en CORE"));
+                .andExpect(jsonPath("$.httpStatus").value(200))
+                .andExpect(jsonPath("$.message").value(ApiMessages.CORE_NOTIFIED))
+                .andExpect(jsonPath("$.timestamp").exists());
     }
 
     @Test
@@ -69,6 +72,7 @@ class CoreMockControllerTest {
         mockMvc.perform(post("/core-mock/evento")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isUnauthorized());
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.httpStatus").value(401));
     }
 }

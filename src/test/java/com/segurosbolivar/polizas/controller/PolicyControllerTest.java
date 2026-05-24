@@ -71,8 +71,10 @@ class PolicyControllerTest {
         mockMvc.perform(get("/polizas")
                         .header(API_KEY_HEADER, API_KEY_VALUE))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].type").value("INDIVIDUAL"))
-                .andExpect(jsonPath("$[0].state").value("ACTIVA"));
+                .andExpect(jsonPath("$.httpStatus").value(200))
+                .andExpect(jsonPath("$.message").exists())
+                .andExpect(jsonPath("$.data[0].type").value("INDIVIDUAL"))
+                .andExpect(jsonPath("$.data[0].state").value("ACTIVA"));
     }
 
     @Test
@@ -85,13 +87,15 @@ class PolicyControllerTest {
                         .param("tipo", "COLECTIVA")
                         .param("estado", "ACTIVA"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].type").value("COLECTIVA"));
+                .andExpect(jsonPath("$.data[0].type").value("COLECTIVA"));
     }
 
     @Test
     void deberiaRetornar401SinApiKey() throws Exception {
         mockMvc.perform(get("/polizas"))
-                .andExpect(status().isUnauthorized());
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.httpStatus").value(401))
+                .andExpect(jsonPath("$.message").exists());
     }
 
     @Test
@@ -101,7 +105,8 @@ class PolicyControllerTest {
         mockMvc.perform(get("/polizas/" + POLICY_ID + "/riesgos")
                         .header(API_KEY_HEADER, API_KEY_VALUE))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].state").value("ACTIVO"));
+                .andExpect(jsonPath("$.httpStatus").value(200))
+                .andExpect(jsonPath("$.data[0].state").value("ACTIVO"));
     }
 
     @Test
@@ -112,7 +117,8 @@ class PolicyControllerTest {
         mockMvc.perform(get("/polizas/" + UNKNOWN_ID + "/riesgos")
                         .header(API_KEY_HEADER, API_KEY_VALUE))
                 .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.error").exists());
+                .andExpect(jsonPath("$.httpStatus").value(404))
+                .andExpect(jsonPath("$.message").exists());
     }
 
     @Test
@@ -130,7 +136,8 @@ class PolicyControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(new RenovarPolicyRequest(0.09))))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.state").value("RENOVADA"));
+                .andExpect(jsonPath("$.httpStatus").value(200))
+                .andExpect(jsonPath("$.data.state").value("RENOVADA"));
     }
 
     @Test
@@ -143,7 +150,8 @@ class PolicyControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(new RenovarPolicyRequest(0.09))))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error").value("No se puede renovar una póliza cancelada"));
+                .andExpect(jsonPath("$.httpStatus").value(400))
+                .andExpect(jsonPath("$.message").value("No se puede renovar una póliza cancelada"));
     }
 
     @Test
@@ -159,7 +167,8 @@ class PolicyControllerTest {
         mockMvc.perform(post("/polizas/" + POLICY_ID + "/cancelar")
                         .header(API_KEY_HEADER, API_KEY_VALUE))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.state").value("CANCELADA"));
+                .andExpect(jsonPath("$.httpStatus").value(200))
+                .andExpect(jsonPath("$.data.state").value("CANCELADA"));
     }
 
     @Test
@@ -170,7 +179,8 @@ class PolicyControllerTest {
         mockMvc.perform(post("/polizas/" + UNKNOWN_ID + "/cancelar")
                         .header(API_KEY_HEADER, API_KEY_VALUE))
                 .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.error").exists());
+                .andExpect(jsonPath("$.httpStatus").value(404))
+                .andExpect(jsonPath("$.message").exists());
     }
 
     @Test
@@ -180,7 +190,8 @@ class PolicyControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"ipc\": null}"))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error").exists());
+                .andExpect(jsonPath("$.httpStatus").value(400))
+                .andExpect(jsonPath("$.message").exists());
     }
 
     @Test
@@ -193,7 +204,8 @@ class PolicyControllerTest {
                         .content(objectMapper.writeValueAsString(
                                 new AgregarRiskRequest(INSURED_ID, "Calle 100 # 9-67, Bogotá"))))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.state").value("ACTIVO"));
+                .andExpect(jsonPath("$.httpStatus").value(201))
+                .andExpect(jsonPath("$.data.state").value("ACTIVO"));
     }
 
     @Test
@@ -208,7 +220,8 @@ class PolicyControllerTest {
                         .content(objectMapper.writeValueAsString(
                                 new AgregarRiskRequest(INSURED_ID, "Calle 100 # 9-67"))))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error").exists());
+                .andExpect(jsonPath("$.httpStatus").value(400))
+                .andExpect(jsonPath("$.message").exists());
     }
 
     private PolicyResponse polizaResponse() {
