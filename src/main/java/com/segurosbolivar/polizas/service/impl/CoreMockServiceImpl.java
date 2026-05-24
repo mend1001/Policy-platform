@@ -14,6 +14,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
+import static com.segurosbolivar.polizas.dto.response.ApiMessages.CORE_SEND;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -23,7 +25,7 @@ public class CoreMockServiceImpl implements CoreMockService {
 
     @Override
     public void sendEvent(CoreEventRequest request) {
-        log.info("Evento enviado al CORE: evento={}, polizaId={}", request.getEvent(), request.getPolicyId());
+        log.info(CORE_SEND + "evento={}, polizaId={}", request.getEvent(), request.getPolicyId());
     }
 
     @Override
@@ -39,7 +41,7 @@ public class CoreMockServiceImpl implements CoreMockService {
                 .build();
         integrationEventRepository.save(event);
 
-        log.info("Enviando evento al CORE: type={}, polId={}", eventType, policy.getId());
+        log.info(CORE_SEND + "type={}, polId={}", eventType, policy.getId());
         event.setState("SENT");
         event.setSentAt(LocalDateTime.now());
         integrationEventRepository.save(event);

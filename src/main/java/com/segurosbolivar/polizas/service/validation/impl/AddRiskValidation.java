@@ -6,11 +6,12 @@ import com.segurosbolivar.polizas.service.validation.PolicyValidationStrategy;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 
+import static com.segurosbolivar.polizas.dto.response.ApiMessages.*;
+
 @Component("addRiskValidation")
 public class AddRiskValidation implements PolicyValidationStrategy {
 
-    private static final String MSG_SOLO_COLECTIVA = "Solo se pueden agregar riesgos a pólizas de tipo COLECTIVA";
-    private static final String MSG_POLIZA_NO_ACTIVA = "Cannot add risks to a policy that is not active";
+
 
     @Override
     public void validate(Policy policy) {

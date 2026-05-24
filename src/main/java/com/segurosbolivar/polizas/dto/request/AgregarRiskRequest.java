@@ -17,12 +17,12 @@ public class AgregarRiskRequest {
     private UUID insuredId;
 
     @NotBlank(message = "Address is required")
-    @Size(min = 10, max = 255, message = "Address must be between 10 and 255 characters")
+    @Size(min = 10, max = 255, message = "La dirección debe tener entre 10 y 255 caracteres.")
     @Pattern(regexp = "^[a-zA-Z0-9\\s#\\-.,áéíóúÁÉÍÓÚñÑ]+$",
              message = "Address contains invalid characters")
     private String address;
 
     @Positive(message = "Insured value must be positive")
-    @Digits(integer = 15, fraction = 2, message = "Insured value must have at most 2 decimal places")
+    @Digits(integer = 15, fraction = 2, message = "El valor asegurado debe tener como máximo 2 decimales.")
     private BigDecimal insuredValue;
 }

@@ -12,11 +12,12 @@ import java.util.UUID;
 @Builder
 public class CoreEventRequest {
 
-    @NotBlank(message = "Event type is required")
-    @Size(max = 50, message = "Event type must not exceed 50 characters")
-    @Pattern(regexp = "^[A-Z_]+$", message = "Event type must be uppercase letters and underscores only")
+    @NotBlank(message = "El tipo de evento es obligatorio")
+    @Size(max = 50, message = "El tipo de evento no debe exceder los 50 caracteres.")
+    @Pattern(regexp = "^[A-Z_]+$", message = "\n" +
+            "El tipo de evento debe constar únicamente de letras mayúsculas y guiones bajos.")
     private String event;
 
-    @NotNull(message = "Policy ID is required")
+    @NotNull(message = "Se requiere el ID de la política.")
     private UUID policyId;
 }

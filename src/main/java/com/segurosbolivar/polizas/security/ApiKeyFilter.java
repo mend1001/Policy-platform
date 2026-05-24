@@ -17,6 +17,8 @@ import tools.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
 
+import static com.segurosbolivar.polizas.dto.response.ApiMessages.INVALID_API_KEY;
+
 @Slf4j
 @Component
 @RequiredArgsConstructor
@@ -36,12 +38,12 @@ public class ApiKeyFilter extends OncePerRequestFilter {
                                     FilterChain filterChain) throws ServletException, IOException {
         String apiKey = request.getHeader(HEADER_API_KEY);
         if (apiKey == null || !apiKey.equals(appProperties.getApiKey())) {
-            log.warn("Acceso denegado: API Key inválida o ausente en URI={}", request.getRequestURI());
+            log.warn(INVALID_API_KEY + "URI={}", request.getRequestURI());
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             response.setContentType(MediaType.APPLICATION_JSON_VALUE);
             response.setCharacterEncoding("UTF-8");
             response.getWriter().write(
-                    objectMapper.writeValueAsString(ApiResponse.error(401, ApiMessages.INVALID_API_KEY)));
+                    objectMapper.writeValueAsString(ApiResponse.error(401, INVALID_API_KEY)));
             return;
         }
         filterChain.doFilter(request, response);
