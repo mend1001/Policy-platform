@@ -23,9 +23,15 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -139,6 +145,37 @@ class RiskServiceImplTest {
         when(riskRepository.findById(riesgoId)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> riskService.cancelarRiesgo(riesgoId))
+                .isInstanceOf(ResourceNotFoundException.class);
+    }
+
+    @Test
+    void deberiaListarRiesgosPorPoliza() {
+        UUID polizaId = UUID.randomUUID();
+        Pageable pageable = PageRequest.of(0, 10);
+        Policy policy = polizaActivaColectiva(polizaId);
+        User insured = usuario(UUID.randomUUID());
+        RiskState activo = estadoRiesgo("ACTIVO");
+        Risk r1 = riesgoActivo(policy, insured, activo);
+        Risk r2 = riesgoActivo(policy, insured, activo);
+
+        when(policyRepository.findById(polizaId)).thenReturn(Optional.of(policy));
+        when(riskRepository.findByPolicy_Id(polizaId, pageable))
+                .thenReturn(new PageImpl<>(List.of(r1, r2)));
+
+        Page<RiskResponse> result = riskService.listByPolicy(polizaId, pageable);
+
+        assertThat(result.getContent()).hasSize(2);
+        assertThat(result.getContent().get(0).getState()).isEqualTo("ACTIVO");
+        verify(riskRepository).findByPolicy_Id(polizaId, pageable);
+    }
+
+    @Test
+    void deberiaLanzarExcepcionAlListarRiesgosDePolicyInexistente() {
+        UUID polizaId = UUID.randomUUID();
+        Pageable pageable = PageRequest.of(0, 10);
+        when(policyRepository.findById(polizaId)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> riskService.listByPolicy(polizaId, pageable))
                 .isInstanceOf(ResourceNotFoundException.class);
     }
 

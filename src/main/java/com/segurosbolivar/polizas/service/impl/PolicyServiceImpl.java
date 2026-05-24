@@ -2,7 +2,6 @@ package com.segurosbolivar.polizas.service.impl;
 
 import com.segurosbolivar.polizas.dto.request.RenovarPolicyRequest;
 import com.segurosbolivar.polizas.dto.response.PolicyResponse;
-import com.segurosbolivar.polizas.dto.response.RiskResponse;
 import com.segurosbolivar.polizas.exception.BusinessException;
 import com.segurosbolivar.polizas.exception.ResourceNotFoundException;
 import com.segurosbolivar.polizas.model.Notification;
@@ -20,12 +19,13 @@ import com.segurosbolivar.polizas.service.PolicyService;
 import com.segurosbolivar.polizas.service.validation.PolicyValidationStrategy;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.util.List;
 import java.util.UUID;
 
 @Slf4j
@@ -65,16 +65,18 @@ public class PolicyServiceImpl implements PolicyService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<PolicyResponse> listarPolizas(String tipo, String estado) {
-        List<Policy> policies = buscarPoliciesConFiltros(tipo, estado);
-        return policies.stream().map(PolicyResponse::from).toList();
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public List<RiskResponse> listarRiesgos(UUID polizaId) {
-        Policy policy = buscarPolicyOLanzarExcepcion(polizaId);
-        return policy.getRisks().stream().map(RiskResponse::from).toList();
+    public Page<PolicyResponse> listarPolizas(String tipo, String estado, Pageable pageable) {
+        Page<Policy> policies;
+        if (tipo != null && estado != null) {
+            policies = policyRepository.findByType_NameAndState_Name(tipo, estado, pageable);
+        } else if (tipo != null) {
+            policies = policyRepository.findByType_Name(tipo, pageable);
+        } else if (estado != null) {
+            policies = policyRepository.findByState_Name(estado, pageable);
+        } else {
+            policies = policyRepository.findAll(pageable);
+        }
+        return policies.map(PolicyResponse::from);
     }
 
     @Override
@@ -139,13 +141,6 @@ public class PolicyServiceImpl implements PolicyService {
         return PolicyResponse.from(saved);
     }
 
-    private List<Policy> buscarPoliciesConFiltros(String tipo, String estado) {
-        if (tipo != null && estado != null) return policyRepository.findByType_NameAndState_Name(tipo, estado);
-        if (tipo != null) return policyRepository.findByType_Name(tipo);
-        if (estado != null) return policyRepository.findByState_Name(estado);
-        return policyRepository.findAll();
-    }
-
     private Policy buscarPolicyOLanzarExcepcion(UUID polizaId) {
         return policyRepository.findById(polizaId)
                 .orElseThrow(() -> new ResourceNotFoundException(MSG_POLIZA_NO_ENCONTRADA + polizaId));
@@ -178,5 +173,4 @@ public class PolicyServiceImpl implements PolicyService {
                 .state("PENDING")
                 .build();
     }
-
 }

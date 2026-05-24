@@ -4,6 +4,8 @@ import com.segurosbolivar.polizas.dto.request.AgregarRiskRequest;
 import com.segurosbolivar.polizas.dto.response.RiskResponse;
 import com.segurosbolivar.polizas.exception.BusinessException;
 import com.segurosbolivar.polizas.exception.ResourceNotFoundException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import com.segurosbolivar.polizas.model.Policy;
 import com.segurosbolivar.polizas.model.Risk;
 import com.segurosbolivar.polizas.model.User;
@@ -89,6 +91,13 @@ public class RiskServiceImpl implements RiskService {
         Risk saved = riskRepository.save(risk);
         log.info("Riesgo id={} cancelado exitosamente", riesgoId);
         return RiskResponse.from(saved);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<RiskResponse> listByPolicy(UUID polizaId, Pageable pageable) {
+        buscarPolicyOLanzarExcepcion(polizaId);
+        return riskRepository.findByPolicy_Id(polizaId, pageable).map(RiskResponse::from);
     }
 
     private Policy buscarPolicyOLanzarExcepcion(UUID polizaId) {
