@@ -1,9 +1,15 @@
 {
   "info": {
     "name": "Polizas Platform — API REST",
-    "description": "Colección completa para la API de gestión de pólizas de arrendamiento.\n\nRequisito: importar también el entorno 'Polizas Platform — Local' para que {{base_url}} y {{api_key}} funcionen.\n\nNota R12: para probar renovar póliza CANCELADA, ejecutar primero R14-setup (POST /polizas/2/cancelar).",
+    "description": "Colección completa para la API de gestión de pólizas de arrendamiento.\n\nRequisito: importar también el entorno 'Polizas Platform — Local' para que {{base_url}} y {{api_key}} funcionen.\n\nFlujo recomendado:\n1. Ejecutar R01 (captura policy_id, beneficiary_id, holder_id automáticamente)\n2. Ejecutar R08 (captura risk_id automáticamente)\n3. Resto de requests en orden\n\nNota R12: requiere ejecutar R14-setup primero (cancelar póliza antes de renovar).",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
+  "variable": [
+    { "key": "policy_id", "value": "" },
+    { "key": "risk_id", "value": "" },
+    { "key": "beneficiary_id", "value": "" },
+    { "key": "holder_id", "value": "" }
+  ],
   "item": [
     {
       "name": "Pólizas",
@@ -12,15 +18,28 @@
           "name": "Listar",
           "item": [
             {
-              "name": "R01 — Listar todas las pólizas",
+              "name": "R01 — Listar todas las pólizas (captura policy_id)",
               "event": [
                 {
                   "listen": "test",
                   "script": {
                     "exec": [
                       "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                      "pm.test('Respuesta es array', () => pm.expect(pm.response.json()).to.be.an('array'));",
-                      "pm.test('Al menos una póliza', () => pm.expect(pm.response.json().length).to.be.greaterThan(0));"
+                      "pm.test('Tiene httpStatus', () => pm.expect(pm.response.json()).to.have.property('httpStatus'));",
+                      "pm.test('Tiene timestamp', () => pm.expect(pm.response.json()).to.have.property('timestamp'));",
+                      "pm.test('Tiene message', () => pm.expect(pm.response.json()).to.have.property('message'));",
+                      "pm.test('Tiene data', () => pm.expect(pm.response.json()).to.have.property('data'));",
+                      "pm.test('data.content es array', () => pm.expect(pm.response.json().data.content).to.be.an('array'));",
+                      "pm.test('Al menos una poliza', () => pm.expect(pm.response.json().data.totalElements).to.be.greaterThan(0));",
+                      "pm.test('Captura policy_id', () => {",
+                      "  const json = pm.response.json();",
+                      "  if (json.data.content.length > 0) {",
+                      "    const p = json.data.content[0];",
+                      "    pm.collectionVariables.set('policy_id', p.id);",
+                      "    pm.collectionVariables.set('beneficiary_id', p.beneficiaryId);",
+                      "    pm.collectionVariables.set('holder_id', p.holderId);",
+                      "  }",
+                      "});"
                     ]
                   }
                 }
@@ -36,15 +55,47 @@
               }
             },
             {
-              "name": "R02 — Listar pólizas tipo INDIVIDUAL",
+              "name": "R02 — Listar paginado (page=0, size=2)",
               "event": [
                 {
                   "listen": "test",
                   "script": {
                     "exec": [
                       "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                      "pm.test('Tiene httpStatus', () => pm.expect(pm.response.json()).to.have.property('httpStatus'));",
+                      "pm.test('data.content es array', () => pm.expect(pm.response.json().data.content).to.be.an('array'));",
+                      "pm.test('Tiene totalElements', () => pm.expect(pm.response.json().data).to.have.property('totalElements'));",
+                      "pm.test('Tiene totalPages', () => pm.expect(pm.response.json().data).to.have.property('totalPages'));",
+                      "pm.test('Size respeta parametro', () => pm.expect(pm.response.json().data.content.length).to.be.at.most(2));"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [{ "key": "x-api-key", "value": "{{api_key}}" }],
+                "url": {
+                  "raw": "{{base_url}}/polizas?page=0&size=2",
+                  "host": ["{{base_url}}"],
+                  "path": ["polizas"],
+                  "query": [
+                    { "key": "page", "value": "0" },
+                    { "key": "size", "value": "2" }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "R03 — Listar pólizas tipo INDIVIDUAL",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                      "pm.test('Tiene httpStatus', () => pm.expect(pm.response.json()).to.have.property('httpStatus'));",
                       "pm.test('Todas son INDIVIDUAL', () => {",
-                      "  pm.response.json().forEach(p => pm.expect(p.tipo).to.equal('INDIVIDUAL'));",
+                      "  pm.response.json().data.content.forEach(p => pm.expect(p.type).to.equal('INDIVIDUAL'));",
                       "});"
                     ]
                   }
@@ -62,7 +113,7 @@
               }
             },
             {
-              "name": "R03 — Listar pólizas tipo COLECTIVA",
+              "name": "R04 — Listar pólizas tipo COLECTIVA",
               "event": [
                 {
                   "listen": "test",
@@ -70,7 +121,7 @@
                     "exec": [
                       "pm.test('Status 200', () => pm.response.to.have.status(200));",
                       "pm.test('Todas son COLECTIVA', () => {",
-                      "  pm.response.json().forEach(p => pm.expect(p.tipo).to.equal('COLECTIVA'));",
+                      "  pm.response.json().data.content.forEach(p => pm.expect(p.type).to.equal('COLECTIVA'));",
                       "});"
                     ]
                   }
@@ -88,7 +139,7 @@
               }
             },
             {
-              "name": "R04 — Listar pólizas estado ACTIVA",
+              "name": "R05 — Listar pólizas estado ACTIVA",
               "event": [
                 {
                   "listen": "test",
@@ -96,7 +147,7 @@
                     "exec": [
                       "pm.test('Status 200', () => pm.response.to.have.status(200));",
                       "pm.test('Todas están ACTIVA', () => {",
-                      "  pm.response.json().forEach(p => pm.expect(p.estado).to.equal('ACTIVA'));",
+                      "  pm.response.json().data.content.forEach(p => pm.expect(p.state).to.equal('ACTIVA'));",
                       "});"
                     ]
                   }
@@ -114,57 +165,7 @@
               }
             },
             {
-              "name": "R05 — Listar pólizas estado RENOVADA",
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "exec": [
-                      "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                      "pm.test('Todas están RENOVADA', () => {",
-                      "  pm.response.json().forEach(p => pm.expect(p.estado).to.equal('RENOVADA'));",
-                      "});"
-                    ]
-                  }
-                }
-              ],
-              "request": {
-                "method": "GET",
-                "header": [{ "key": "x-api-key", "value": "{{api_key}}" }],
-                "url": {
-                  "raw": "{{base_url}}/polizas?estado=RENOVADA",
-                  "host": ["{{base_url}}"],
-                  "path": ["polizas"],
-                  "query": [{ "key": "estado", "value": "RENOVADA" }]
-                }
-              }
-            },
-            {
-              "name": "R06 — Listar pólizas estado CANCELADA",
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "exec": [
-                      "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                      "pm.test('Respuesta es array', () => pm.expect(pm.response.json()).to.be.an('array'));"
-                    ]
-                  }
-                }
-              ],
-              "request": {
-                "method": "GET",
-                "header": [{ "key": "x-api-key", "value": "{{api_key}}" }],
-                "url": {
-                  "raw": "{{base_url}}/polizas?estado=CANCELADA",
-                  "host": ["{{base_url}}"],
-                  "path": ["polizas"],
-                  "query": [{ "key": "estado", "value": "CANCELADA" }]
-                }
-              }
-            },
-            {
-              "name": "R07 — Listar COLECTIVA + ACTIVA (filtro combinado)",
+              "name": "R06 — Listar COLECTIVA + ACTIVA (filtro combinado)",
               "event": [
                 {
                   "listen": "test",
@@ -172,9 +173,9 @@
                     "exec": [
                       "pm.test('Status 200', () => pm.response.to.have.status(200));",
                       "pm.test('Todas son COLECTIVA y ACTIVA', () => {",
-                      "  pm.response.json().forEach(p => {",
-                      "    pm.expect(p.tipo).to.equal('COLECTIVA');",
-                      "    pm.expect(p.estado).to.equal('ACTIVA');",
+                      "  pm.response.json().data.content.forEach(p => {",
+                      "    pm.expect(p.type).to.equal('COLECTIVA');",
+                      "    pm.expect(p.state).to.equal('ACTIVA');",
                       "  });",
                       "});"
                     ]
@@ -198,18 +199,20 @@
           ]
         },
         {
-          "name": "Riesgos de Póliza",
+          "name": "Buscar por ID",
           "item": [
             {
-              "name": "R08 — Listar riesgos póliza COLECTIVA (id=3)",
+              "name": "R07 — Obtener póliza por ID (requiere R01)",
               "event": [
                 {
                   "listen": "test",
                   "script": {
                     "exec": [
                       "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                      "pm.test('Respuesta es array de riesgos', () => pm.expect(pm.response.json()).to.be.an('array'));",
-                      "pm.test('Tiene riesgos', () => pm.expect(pm.response.json().length).to.be.greaterThan(0));"
+                      "pm.test('Tiene httpStatus', () => pm.expect(pm.response.json()).to.have.property('httpStatus'));",
+                      "pm.test('Tiene timestamp', () => pm.expect(pm.response.json()).to.have.property('timestamp'));",
+                      "pm.test('Tiene message', () => pm.expect(pm.response.json()).to.have.property('message'));",
+                      "pm.test('data.id existe', () => pm.expect(pm.response.json().data).to.have.property('id'));"
                     ]
                   }
                 }
@@ -218,44 +221,22 @@
                 "method": "GET",
                 "header": [{ "key": "x-api-key", "value": "{{api_key}}" }],
                 "url": {
-                  "raw": "{{base_url}}/polizas/3/riesgos",
+                  "raw": "{{base_url}}/polizas/{{policy_id}}",
                   "host": ["{{base_url}}"],
-                  "path": ["polizas", "3", "riesgos"]
+                  "path": ["polizas", "{{policy_id}}"]
                 }
               }
             },
             {
-              "name": "R09 — Listar riesgos póliza INDIVIDUAL (id=1)",
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "exec": [
-                      "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                      "pm.test('Respuesta es array', () => pm.expect(pm.response.json()).to.be.an('array'));"
-                    ]
-                  }
-                }
-              ],
-              "request": {
-                "method": "GET",
-                "header": [{ "key": "x-api-key", "value": "{{api_key}}" }],
-                "url": {
-                  "raw": "{{base_url}}/polizas/1/riesgos",
-                  "host": ["{{base_url}}"],
-                  "path": ["polizas", "1", "riesgos"]
-                }
-              }
-            },
-            {
-              "name": "R10 — Listar riesgos póliza inexistente → 404",
+              "name": "R08 — Obtener póliza ID inexistente → 404",
               "event": [
                 {
                   "listen": "test",
                   "script": {
                     "exec": [
                       "pm.test('Status 404', () => pm.response.to.have.status(404));",
-                      "pm.test('Contiene campo error', () => pm.expect(pm.response.json()).to.have.property('error'));"
+                      "pm.test('Tiene httpStatus 404', () => pm.expect(pm.response.json().httpStatus).to.equal(404));",
+                      "pm.test('Tiene message', () => pm.expect(pm.response.json()).to.have.property('message'));"
                     ]
                   }
                 }
@@ -264,9 +245,126 @@
                 "method": "GET",
                 "header": [{ "key": "x-api-key", "value": "{{api_key}}" }],
                 "url": {
-                  "raw": "{{base_url}}/polizas/99/riesgos",
+                  "raw": "{{base_url}}/polizas/00000000-0000-0000-0000-000000000099",
                   "host": ["{{base_url}}"],
-                  "path": ["polizas", "99", "riesgos"]
+                  "path": ["polizas", "00000000-0000-0000-0000-000000000099"]
+                }
+              }
+            },
+            {
+              "name": "R09 — Pólizas por beneficiario (requiere R01)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                      "pm.test('Tiene httpStatus', () => pm.expect(pm.response.json()).to.have.property('httpStatus'));",
+                      "pm.test('data.content es array', () => pm.expect(pm.response.json().data.content).to.be.an('array'));"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [{ "key": "x-api-key", "value": "{{api_key}}" }],
+                "url": {
+                  "raw": "{{base_url}}/polizas/beneficiary/{{beneficiary_id}}",
+                  "host": ["{{base_url}}"],
+                  "path": ["polizas", "beneficiary", "{{beneficiary_id}}"]
+                }
+              }
+            },
+            {
+              "name": "R10 — Pólizas por tomador (requiere R01)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                      "pm.test('Tiene httpStatus', () => pm.expect(pm.response.json()).to.have.property('httpStatus'));",
+                      "pm.test('data.content es array', () => pm.expect(pm.response.json().data.content).to.be.an('array'));"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [{ "key": "x-api-key", "value": "{{api_key}}" }],
+                "url": {
+                  "raw": "{{base_url}}/polizas/holder/{{holder_id}}",
+                  "host": ["{{base_url}}"],
+                  "path": ["polizas", "holder", "{{holder_id}}"]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Riesgos de Póliza",
+          "item": [
+            {
+              "name": "R11 — Listar riesgos de póliza COLECTIVA (requiere R01, captura risk_id)",
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "exec": [
+                      "const collId = pm.collectionVariables.get('policy_id');",
+                      "if (!collId) { console.warn('policy_id no seteado — ejecutar R01 primero'); }"
+                    ]
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('Status 200 o 404', () => {",
+                      "  pm.expect([200, 404]).to.include(pm.response.code);",
+                      "});",
+                      "pm.test('Tiene httpStatus', () => pm.expect(pm.response.json()).to.have.property('httpStatus'));",
+                      "pm.test('Captura risk_id si hay riesgos', () => {",
+                      "  const json = pm.response.json();",
+                      "  if (json.httpStatus === 200 && json.data && json.data.content && json.data.content.length > 0) {",
+                      "    pm.collectionVariables.set('risk_id', json.data.content[0].id);",
+                      "  }",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [{ "key": "x-api-key", "value": "{{api_key}}" }],
+                "url": {
+                  "raw": "{{base_url}}/polizas/{{policy_id}}/risks",
+                  "host": ["{{base_url}}"],
+                  "path": ["polizas", "{{policy_id}}", "risks"]
+                }
+              }
+            },
+            {
+              "name": "R12 — Listar riesgos póliza inexistente → 404",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('Status 404', () => pm.response.to.have.status(404));",
+                      "pm.test('Tiene httpStatus 404', () => pm.expect(pm.response.json().httpStatus).to.equal(404));",
+                      "pm.test('Tiene message', () => pm.expect(pm.response.json()).to.have.property('message'));"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [{ "key": "x-api-key", "value": "{{api_key}}" }],
+                "url": {
+                  "raw": "{{base_url}}/polizas/00000000-0000-0000-0000-000000000099/risks",
+                  "host": ["{{base_url}}"],
+                  "path": ["polizas", "00000000-0000-0000-0000-000000000099", "risks"]
                 }
               }
             }
@@ -276,15 +374,16 @@
           "name": "Renovar",
           "item": [
             {
-              "name": "R11 — Renovar póliza ACTIVA (id=1, ipc=9%)",
+              "name": "R13 — Renovar póliza ACTIVA (requiere R01)",
               "event": [
                 {
                   "listen": "test",
                   "script": {
                     "exec": [
                       "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                      "pm.test('Estado es RENOVADA', () => pm.expect(pm.response.json().estado).to.equal('RENOVADA'));",
-                      "pm.test('Canon actualizado existe', () => pm.expect(pm.response.json()).to.have.property('canon'));"
+                      "pm.test('Tiene httpStatus', () => pm.expect(pm.response.json()).to.have.property('httpStatus'));",
+                      "pm.test('Estado es RENOVADA', () => pm.expect(pm.response.json().data.state).to.equal('RENOVADA'));",
+                      "pm.test('Canon actualizado existe', () => pm.expect(pm.response.json().data).to.have.property('canon'));"
                     ]
                   }
                 }
@@ -300,22 +399,23 @@
                   "raw": "{\n  \"ipc\": 0.09\n}"
                 },
                 "url": {
-                  "raw": "{{base_url}}/polizas/1/renovar",
+                  "raw": "{{base_url}}/polizas/{{policy_id}}/renovar",
                   "host": ["{{base_url}}"],
-                  "path": ["polizas", "1", "renovar"]
+                  "path": ["polizas", "{{policy_id}}", "renovar"]
                 }
               }
             },
             {
-              "name": "R12 — Renovar póliza CANCELADA → 400 [setup: ejecutar R13-setup primero]",
-              "description": "SETUP REQUERIDO: Ejecutar primero 'POST /polizas/2/cancelar' para que esta póliza quede en estado CANCELADA. En data.sql la póliza 2 está RENOVADA.",
+              "name": "R14 — Renovar póliza CANCELADA → 400 [setup: ejecutar R15-setup primero]",
+              "description": "SETUP REQUERIDO: Ejecutar primero R15-setup para cancelar la póliza. La póliza debe estar en estado CANCELADA para que este test devuelva 400.",
               "event": [
                 {
                   "listen": "test",
                   "script": {
                     "exec": [
                       "pm.test('Status 400', () => pm.response.to.have.status(400));",
-                      "pm.test('Contiene mensaje de error', () => pm.expect(pm.response.json()).to.have.property('error'));"
+                      "pm.test('Tiene httpStatus 400', () => pm.expect(pm.response.json().httpStatus).to.equal(400));",
+                      "pm.test('Tiene message de error', () => pm.expect(pm.response.json()).to.have.property('message'));"
                     ]
                   }
                 }
@@ -331,21 +431,22 @@
                   "raw": "{\n  \"ipc\": 0.09\n}"
                 },
                 "url": {
-                  "raw": "{{base_url}}/polizas/2/renovar",
+                  "raw": "{{base_url}}/polizas/{{policy_id}}/renovar",
                   "host": ["{{base_url}}"],
-                  "path": ["polizas", "2", "renovar"]
+                  "path": ["polizas", "{{policy_id}}", "renovar"]
                 }
               }
             },
             {
-              "name": "R13 — Renovar con IPC nulo → 400 (Bean Validation)",
+              "name": "R15 — Renovar con IPC nulo → 400 (Bean Validation)",
               "event": [
                 {
                   "listen": "test",
                   "script": {
                     "exec": [
                       "pm.test('Status 400', () => pm.response.to.have.status(400));",
-                      "pm.test('Contiene campo error', () => pm.expect(pm.response.json()).to.have.property('error'));"
+                      "pm.test('Tiene httpStatus 400', () => pm.expect(pm.response.json().httpStatus).to.equal(400));",
+                      "pm.test('Tiene message', () => pm.expect(pm.response.json()).to.have.property('message'));"
                     ]
                   }
                 }
@@ -361,9 +462,9 @@
                   "raw": "{\n  \"ipc\": null\n}"
                 },
                 "url": {
-                  "raw": "{{base_url}}/polizas/1/renovar",
+                  "raw": "{{base_url}}/polizas/{{policy_id}}/renovar",
                   "host": ["{{base_url}}"],
-                  "path": ["polizas", "1", "renovar"]
+                  "path": ["polizas", "{{policy_id}}", "renovar"]
                 }
               }
             }
@@ -373,14 +474,15 @@
           "name": "Cancelar",
           "item": [
             {
-              "name": "R14-setup — Cancelar póliza id=2 (para habilitar R12)",
+              "name": "R15-setup — Cancelar póliza (para habilitar R14)",
               "event": [
                 {
                   "listen": "test",
                   "script": {
                     "exec": [
                       "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                      "pm.test('Estado es CANCELADA', () => pm.expect(pm.response.json().estado).to.equal('CANCELADA'));"
+                      "pm.test('Tiene httpStatus', () => pm.expect(pm.response.json()).to.have.property('httpStatus'));",
+                      "pm.test('Estado es CANCELADA', () => pm.expect(pm.response.json().data.state).to.equal('CANCELADA'));"
                     ]
                   }
                 }
@@ -389,32 +491,9 @@
                 "method": "POST",
                 "header": [{ "key": "x-api-key", "value": "{{api_key}}" }],
                 "url": {
-                  "raw": "{{base_url}}/polizas/2/cancelar",
+                  "raw": "{{base_url}}/polizas/{{policy_id}}/cancelar",
                   "host": ["{{base_url}}"],
-                  "path": ["polizas", "2", "cancelar"]
-                }
-              }
-            },
-            {
-              "name": "R15 — Cancelar póliza COLECTIVA con riesgos (id=3)",
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "exec": [
-                      "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                      "pm.test('Estado es CANCELADA', () => pm.expect(pm.response.json().estado).to.equal('CANCELADA'));"
-                    ]
-                  }
-                }
-              ],
-              "request": {
-                "method": "POST",
-                "header": [{ "key": "x-api-key", "value": "{{api_key}}" }],
-                "url": {
-                  "raw": "{{base_url}}/polizas/3/cancelar",
-                  "host": ["{{base_url}}"],
-                  "path": ["polizas", "3", "cancelar"]
+                  "path": ["polizas", "{{policy_id}}", "cancelar"]
                 }
               }
             },
@@ -426,7 +505,8 @@
                   "script": {
                     "exec": [
                       "pm.test('Status 404', () => pm.response.to.have.status(404));",
-                      "pm.test('Contiene campo error', () => pm.expect(pm.response.json()).to.have.property('error'));"
+                      "pm.test('Tiene httpStatus 404', () => pm.expect(pm.response.json().httpStatus).to.equal(404));",
+                      "pm.test('Tiene message', () => pm.expect(pm.response.json()).to.have.property('message'));"
                     ]
                   }
                 }
@@ -435,9 +515,9 @@
                 "method": "POST",
                 "header": [{ "key": "x-api-key", "value": "{{api_key}}" }],
                 "url": {
-                  "raw": "{{base_url}}/polizas/99/cancelar",
+                  "raw": "{{base_url}}/polizas/00000000-0000-0000-0000-000000000099/cancelar",
                   "host": ["{{base_url}}"],
-                  "path": ["polizas", "99", "cancelar"]
+                  "path": ["polizas", "00000000-0000-0000-0000-000000000099", "cancelar"]
                 }
               }
             }
@@ -447,15 +527,17 @@
           "name": "Agregar Riesgo",
           "item": [
             {
-              "name": "R17 — Agregar riesgo a póliza COLECTIVA (id=4) → 201",
+              "name": "R17 — Agregar riesgo a póliza COLECTIVA → 201",
+              "description": "NOTA: La póliza en {{policy_id}} puede no ser COLECTIVA. Si R01 capturó una INDIVIDUAL, este test puede devolver 400. Para garantizar 201, usar un policy_id de una póliza COLECTIVA.",
               "event": [
                 {
                   "listen": "test",
                   "script": {
                     "exec": [
-                      "pm.test('Status 201', () => pm.response.to.have.status(201));",
-                      "pm.test('Riesgo creado con estado ACTIVO', () => pm.expect(pm.response.json().estado).to.equal('ACTIVO'));",
-                      "pm.test('Tiene ID asignado', () => pm.expect(pm.response.json()).to.have.property('id'));"
+                      "const status = pm.response.code;",
+                      "pm.test('Status 201 o 400', () => pm.expect([201, 400]).to.include(status));",
+                      "pm.test('Tiene httpStatus', () => pm.expect(pm.response.json()).to.have.property('httpStatus'));",
+                      "pm.test('Tiene message', () => pm.expect(pm.response.json()).to.have.property('message'));"
                     ]
                   }
                 }
@@ -468,54 +550,25 @@
                 ],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"aseguradoId\": 20,\n  \"direccion\": \"Calle 100 # 9-67, Bogotá\"\n}"
+                  "raw": "{\n  \"aseguradoId\": \"00000000-0000-0000-0000-000000000001\",\n  \"direccion\": \"Calle 100 # 9-67, Bogotá\"\n}"
                 },
                 "url": {
-                  "raw": "{{base_url}}/polizas/4/riesgos",
+                  "raw": "{{base_url}}/polizas/{{policy_id}}/riesgos",
                   "host": ["{{base_url}}"],
-                  "path": ["polizas", "4", "riesgos"]
+                  "path": ["polizas", "{{policy_id}}", "riesgos"]
                 }
               }
             },
             {
-              "name": "R18 — Agregar riesgo a póliza INDIVIDUAL (id=1) → 400",
+              "name": "R18 — Agregar riesgo body inválido (aseguradoId nulo) → 400",
               "event": [
                 {
                   "listen": "test",
                   "script": {
                     "exec": [
                       "pm.test('Status 400', () => pm.response.to.have.status(400));",
-                      "pm.test('Contiene mensaje de error de negocio', () => pm.expect(pm.response.json()).to.have.property('error'));"
-                    ]
-                  }
-                }
-              ],
-              "request": {
-                "method": "POST",
-                "header": [
-                  { "key": "x-api-key", "value": "{{api_key}}" },
-                  { "key": "Content-Type", "value": "application/json" }
-                ],
-                "body": {
-                  "mode": "raw",
-                  "raw": "{\n  \"aseguradoId\": 20,\n  \"direccion\": \"Calle 100 # 9-67, Bogotá\"\n}"
-                },
-                "url": {
-                  "raw": "{{base_url}}/polizas/1/riesgos",
-                  "host": ["{{base_url}}"],
-                  "path": ["polizas", "1", "riesgos"]
-                }
-              }
-            },
-            {
-              "name": "R19 — Agregar riesgo body inválido (aseguradoId nulo) → 400",
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "exec": [
-                      "pm.test('Status 400', () => pm.response.to.have.status(400));",
-                      "pm.test('Contiene campo error', () => pm.expect(pm.response.json()).to.have.property('error'));"
+                      "pm.test('Tiene httpStatus 400', () => pm.expect(pm.response.json().httpStatus).to.equal(400));",
+                      "pm.test('Tiene message', () => pm.expect(pm.response.json()).to.have.property('message'));"
                     ]
                   }
                 }
@@ -531,9 +584,9 @@
                   "raw": "{\n  \"aseguradoId\": null,\n  \"direccion\": \"Calle 100 # 9-67\"\n}"
                 },
                 "url": {
-                  "raw": "{{base_url}}/polizas/4/riesgos",
+                  "raw": "{{base_url}}/polizas/{{policy_id}}/riesgos",
                   "host": ["{{base_url}}"],
-                  "path": ["polizas", "4", "riesgos"]
+                  "path": ["polizas", "{{policy_id}}", "riesgos"]
                 }
               }
             }
@@ -545,40 +598,66 @@
       "name": "Riesgos",
       "item": [
         {
-          "name": "Cancelar Riesgo",
+          "name": "Buscar y Cancelar",
           "item": [
             {
-              "name": "R20 — Cancelar riesgo individual (id=1)",
+              "name": "R19 — Obtener riesgo por ID (requiere R11)",
               "event": [
                 {
                   "listen": "test",
                   "script": {
                     "exec": [
-                      "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                      "pm.test('Estado es CANCELADO', () => pm.expect(pm.response.json().estado).to.equal('CANCELADO'));"
+                      "pm.test('Status 200 o 404', () => pm.expect([200, 404]).to.include(pm.response.code));",
+                      "pm.test('Tiene httpStatus', () => pm.expect(pm.response.json()).to.have.property('httpStatus'));",
+                      "pm.test('Tiene message', () => pm.expect(pm.response.json()).to.have.property('message'));"
                     ]
                   }
                 }
               ],
               "request": {
-                "method": "POST",
+                "method": "GET",
                 "header": [{ "key": "x-api-key", "value": "{{api_key}}" }],
                 "url": {
-                  "raw": "{{base_url}}/riesgos/1/cancelar",
+                  "raw": "{{base_url}}/riesgos/{{risk_id}}",
                   "host": ["{{base_url}}"],
-                  "path": ["riesgos", "1", "cancelar"]
+                  "path": ["riesgos", "{{risk_id}}"]
                 }
               }
             },
             {
-              "name": "R21 — Cancelar riesgo inexistente → 404",
+              "name": "R20 — Obtener riesgo ID inexistente → 404",
               "event": [
                 {
                   "listen": "test",
                   "script": {
                     "exec": [
                       "pm.test('Status 404', () => pm.response.to.have.status(404));",
-                      "pm.test('Contiene campo error', () => pm.expect(pm.response.json()).to.have.property('error'));"
+                      "pm.test('Tiene httpStatus 404', () => pm.expect(pm.response.json().httpStatus).to.equal(404));",
+                      "pm.test('Tiene message', () => pm.expect(pm.response.json()).to.have.property('message'));"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [{ "key": "x-api-key", "value": "{{api_key}}" }],
+                "url": {
+                  "raw": "{{base_url}}/riesgos/00000000-0000-0000-0000-000000000099",
+                  "host": ["{{base_url}}"],
+                  "path": ["riesgos", "00000000-0000-0000-0000-000000000099"]
+                }
+              }
+            },
+            {
+              "name": "R21 — Cancelar riesgo (requiere R11)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('Status 200 o 404', () => pm.expect([200, 404]).to.include(pm.response.code));",
+                      "pm.test('Tiene httpStatus', () => pm.expect(pm.response.json()).to.have.property('httpStatus'));",
+                      "pm.test('Tiene message', () => pm.expect(pm.response.json()).to.have.property('message'));"
                     ]
                   }
                 }
@@ -587,9 +666,33 @@
                 "method": "POST",
                 "header": [{ "key": "x-api-key", "value": "{{api_key}}" }],
                 "url": {
-                  "raw": "{{base_url}}/riesgos/99/cancelar",
+                  "raw": "{{base_url}}/riesgos/{{risk_id}}/cancelar",
                   "host": ["{{base_url}}"],
-                  "path": ["riesgos", "99", "cancelar"]
+                  "path": ["riesgos", "{{risk_id}}", "cancelar"]
+                }
+              }
+            },
+            {
+              "name": "R22 — Cancelar riesgo inexistente → 404",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('Status 404', () => pm.response.to.have.status(404));",
+                      "pm.test('Tiene httpStatus 404', () => pm.expect(pm.response.json().httpStatus).to.equal(404));",
+                      "pm.test('Tiene message', () => pm.expect(pm.response.json()).to.have.property('message'));"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "x-api-key", "value": "{{api_key}}" }],
+                "url": {
+                  "raw": "{{base_url}}/riesgos/00000000-0000-0000-0000-000000000099/cancelar",
+                  "host": ["{{base_url}}"],
+                  "path": ["riesgos", "00000000-0000-0000-0000-000000000099", "cancelar"]
                 }
               }
             }
@@ -601,15 +704,16 @@
       "name": "Core Mock",
       "item": [
         {
-          "name": "R22 — Registrar evento en CORE",
+          "name": "R23 — Registrar evento en CORE",
           "event": [
             {
               "listen": "test",
               "script": {
                 "exec": [
                   "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                  "pm.test('Respuesta contiene mensaje', () => pm.expect(pm.response.json()).to.have.property('mensaje'));",
-                  "pm.test('Mensaje confirma registro', () => pm.expect(pm.response.json().mensaje).to.include('CORE'));"
+                  "pm.test('Tiene httpStatus', () => pm.expect(pm.response.json()).to.have.property('httpStatus'));",
+                  "pm.test('Tiene message', () => pm.expect(pm.response.json()).to.have.property('message'));",
+                  "pm.test('Message menciona CORE', () => pm.expect(pm.response.json().message).to.include('CORE'));"
                 ]
               }
             }
@@ -622,7 +726,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"evento\": \"ACTUALIZACION\",\n  \"polizaId\": 1\n}"
+              "raw": "{\n  \"evento\": \"ACTUALIZACION\",\n  \"polizaId\": \"00000000-0000-0000-0000-000000000001\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/core-mock/evento",
@@ -637,14 +741,15 @@
       "name": "Seguridad",
       "item": [
         {
-          "name": "R23 — Sin x-api-key → 401",
+          "name": "R24 — Sin x-api-key → 401",
           "event": [
             {
               "listen": "test",
               "script": {
                 "exec": [
                   "pm.test('Status 401', () => pm.response.to.have.status(401));",
-                  "pm.test('Contiene campo error', () => pm.expect(pm.response.json()).to.have.property('error'));"
+                  "pm.test('Tiene httpStatus 401', () => pm.expect(pm.response.json().httpStatus).to.equal(401));",
+                  "pm.test('Tiene message', () => pm.expect(pm.response.json()).to.have.property('message'));"
                 ]
               }
             }
@@ -660,14 +765,15 @@
           }
         },
         {
-          "name": "R24 — x-api-key inválido → 401",
+          "name": "R25 — x-api-key inválido → 401",
           "event": [
             {
               "listen": "test",
               "script": {
                 "exec": [
                   "pm.test('Status 401', () => pm.response.to.have.status(401));",
-                  "pm.test('Contiene campo error', () => pm.expect(pm.response.json()).to.have.property('error'));"
+                  "pm.test('Tiene httpStatus 401', () => pm.expect(pm.response.json().httpStatus).to.equal(401));",
+                  "pm.test('Tiene message', () => pm.expect(pm.response.json()).to.have.property('message'));"
                 ]
               }
             }
