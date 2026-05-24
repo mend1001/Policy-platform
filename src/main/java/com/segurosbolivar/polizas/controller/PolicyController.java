@@ -21,7 +21,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/polizas")
+@RequestMapping("/${api.version}/polizas")
 @RequiredArgsConstructor
 public class PolicyController {
 

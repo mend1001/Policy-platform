@@ -14,6 +14,7 @@ application-local.yml
 # Claude Code — notas privadas
 CLAUDE.local.md
 CLAUDE.md
+TECHNICAL_REFERENCE.md
 HELP.md
 .claude
 {.claude

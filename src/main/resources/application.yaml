@@ -20,5 +20,8 @@ spring:
       mode: always
 
 app:
-  api-key: ${APP_API_KEY}
+  api-key: ${APP_API_KEY:123456}
   core-mock-url: ${CORE_MOCK_URL:http://localhost:8080}
+api:
+  version: v1
+  base-path: /${api.version}
