@@ -7,6 +7,7 @@ import com.segurosbolivar.polizas.service.RiskService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -24,6 +25,9 @@ class RiskControllerTest {
 
     private static final String API_KEY_HEADER = "x-api-key";
     private static final String API_KEY_VALUE  = "123456";
+
+    @Value("${api.base-path}")
+    private String apiBasePath;
 
     private static final UUID RISK_ID    = UUID.fromString("550e8400-e29b-41d4-a716-446655440010");
     private static final UUID POLICY_ID  = UUID.fromString("550e8400-e29b-41d4-a716-446655440001");
@@ -52,7 +56,7 @@ class RiskControllerTest {
 
         when(riskService.findById(RISK_ID)).thenReturn(activo);
 
-        mockMvc.perform(get("/riesgos/" + RISK_ID)
+        mockMvc.perform(get(apiBasePath + "/riesgos/" + RISK_ID)
                         .header(API_KEY_HEADER, API_KEY_VALUE))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.httpStatus").value(200))
@@ -66,7 +70,7 @@ class RiskControllerTest {
         when(riskService.findById(UNKNOWN_ID))
                 .thenThrow(new ResourceNotFoundException("Riesgo no encontrado con id: " + UNKNOWN_ID));
 
-        mockMvc.perform(get("/riesgos/" + UNKNOWN_ID)
+        mockMvc.perform(get(apiBasePath + "/riesgos/" + UNKNOWN_ID)
                         .header(API_KEY_HEADER, API_KEY_VALUE))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.httpStatus").value(404))
@@ -81,7 +85,7 @@ class RiskControllerTest {
 
         when(riskService.cancelRisk(RISK_ID)).thenReturn(cancelado);
 
-        mockMvc.perform(post("/riesgos/" + RISK_ID + "/cancelar")
+        mockMvc.perform(post(apiBasePath + "/riesgos/" + RISK_ID + "/cancelar")
                         .header(API_KEY_HEADER, API_KEY_VALUE))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.httpStatus").value(200))
@@ -94,7 +98,7 @@ class RiskControllerTest {
         when(riskService.cancelRisk(UNKNOWN_ID))
                 .thenThrow(new ResourceNotFoundException("Riesgo no encontrado con id: " + UNKNOWN_ID));
 
-        mockMvc.perform(post("/riesgos/" + UNKNOWN_ID + "/cancelar")
+        mockMvc.perform(post(apiBasePath + "/riesgos/" + UNKNOWN_ID + "/cancelar")
                         .header(API_KEY_HEADER, API_KEY_VALUE))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.httpStatus").value(404))
@@ -103,7 +107,7 @@ class RiskControllerTest {
 
     @Test
     void deberiaRetornar401SinApiKey() throws Exception {
-        mockMvc.perform(post("/riesgos/" + RISK_ID + "/cancelar"))
+        mockMvc.perform(post(apiBasePath + "/riesgos/" + RISK_ID + "/cancelar"))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.httpStatus").value(401));
     }

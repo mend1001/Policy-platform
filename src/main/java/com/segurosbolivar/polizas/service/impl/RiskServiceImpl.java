@@ -24,12 +24,13 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
 
+import static com.segurosbolivar.polizas.dto.response.ApiMessages.*;
+
 @Slf4j
 @Service
 public class RiskServiceImpl implements RiskService {
 
-    private static final String MSG_POLIZA_NO_ENCONTRADA = "Póliza no encontrada con id: ";
-    private static final String MSG_RIESGO_NO_ENCONTRADO = "Riesgo no encontrado con id: ";
+
     private static final String STATE_ACTIVO = "ACTIVO";
     private static final String STATE_CANCELADO = "CANCELADO";
 
@@ -60,10 +61,10 @@ public class RiskServiceImpl implements RiskService {
         addRiskValidation.validate(policy);
 
         User insured = userRepository.findById(request.getInsuredId())
-                .orElseThrow(() -> new ResourceNotFoundException("Usuario asegurado no encontrado con id: " + request.getInsuredId()));
+                .orElseThrow(() -> new ResourceNotFoundException(USER_NOT_FOUND + request.getInsuredId()));
 
         RiskState activeState = riskStateRepository.findByName(STATE_ACTIVO)
-                .orElseThrow(() -> new BusinessException("Estado ACTIVO no encontrado en catálogo", HttpStatus.INTERNAL_SERVER_ERROR));
+                .orElseThrow(() -> new BusinessException(CATALOG_NOT_ACTIVE, HttpStatus.INTERNAL_SERVER_ERROR));
 
         Risk risk = Risk.builder()
                 .policy(policy)
@@ -86,11 +87,11 @@ public class RiskServiceImpl implements RiskService {
                 .orElseThrow(() -> new ResourceNotFoundException(MSG_RIESGO_NO_ENCONTRADO + riesgoId));
 
         if (STATE_CANCELADO.equals(risk.getState().getName())) {
-            throw new BusinessException("Risk is already cancelled", HttpStatus.CONFLICT);
+            throw new BusinessException(MSG_RIESGO_YA_CANCELADO, HttpStatus.CONFLICT);
         }
 
         RiskState cancelledState = riskStateRepository.findByName(STATE_CANCELADO)
-                .orElseThrow(() -> new BusinessException("Estado CANCELADO no encontrado en catálogo", HttpStatus.INTERNAL_SERVER_ERROR));
+                .orElseThrow(() -> new BusinessException(CATALOG_NOT_CANCEL, HttpStatus.INTERNAL_SERVER_ERROR));
 
         risk.setState(cancelledState);
         Risk saved = riskRepository.save(risk);

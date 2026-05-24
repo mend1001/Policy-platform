@@ -5,3 +5,6 @@ spring:
 
 app:
   api-key: 123456
+api:
+  version: v1
+  base-path: /${api.version}

@@ -7,6 +7,7 @@ import com.segurosbolivar.polizas.service.CoreMockService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -28,6 +29,9 @@ class CoreMockControllerTest {
     private static final String API_KEY_HEADER = "x-api-key";
     private static final String API_KEY_VALUE  = "123456";
     private static final UUID POLICY_UUID = UUID.fromString("550e8400-e29b-41d4-a716-446655440001");
+
+    @Value("${api.base-path}")
+    private String apiBasePath;
 
     @Autowired
     private MockMvc mockMvc;
@@ -55,7 +59,7 @@ class CoreMockControllerTest {
                 .policyId(POLICY_UUID)
                 .build();
 
-        mockMvc.perform(post("/core-mock/evento")
+        mockMvc.perform(post(apiBasePath + "/core-mock/evento")
                         .header(API_KEY_HEADER, API_KEY_VALUE)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
@@ -72,7 +76,7 @@ class CoreMockControllerTest {
                 .policyId(POLICY_UUID)
                 .build();
 
-        mockMvc.perform(post("/core-mock/evento")
+        mockMvc.perform(post(apiBasePath + "/core-mock/evento")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isUnauthorized())

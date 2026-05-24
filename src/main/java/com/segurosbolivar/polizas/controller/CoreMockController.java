@@ -10,7 +10,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/core-mock")
+@RequestMapping("${api.version}/core-mock")
 @RequiredArgsConstructor
 public class CoreMockController {
 
