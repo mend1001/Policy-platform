@@ -83,6 +83,23 @@ class PolicyControllerTest {
     }
 
     @Test
+    void deberiaResponderConEstructuraPaginadaCompleta() throws Exception {
+        when(policyService.listarPolizas(isNull(), isNull(), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(polizaResponse(), polizaColectivaResponse())));
+
+        mockMvc.perform(get("/polizas")
+                        .header(API_KEY_HEADER, API_KEY_VALUE)
+                        .param("page", "0")
+                        .param("size", "5"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.httpStatus").value(200))
+                .andExpect(jsonPath("$.data.content").isArray())
+                .andExpect(jsonPath("$.data.totalElements").exists())
+                .andExpect(jsonPath("$.data.totalPages").exists())
+                .andExpect(jsonPath("$.data.size").exists());
+    }
+
+    @Test
     void deberiaListarPolizasFiltrandoPorTipoYEstado() throws Exception {
         when(policyService.listarPolizas(eq("COLECTIVA"), eq("ACTIVA"), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of(polizaColectivaResponse())));
