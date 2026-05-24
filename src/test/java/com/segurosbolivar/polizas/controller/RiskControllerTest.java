@@ -54,8 +54,9 @@ class RiskControllerTest {
         mockMvc.perform(post("/riesgos/" + RISK_ID + "/cancelar")
                         .header(API_KEY_HEADER, API_KEY_VALUE))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.state").value("CANCELADO"))
-                .andExpect(jsonPath("$.id").value(RISK_ID.toString()));
+                .andExpect(jsonPath("$.httpStatus").value(200))
+                .andExpect(jsonPath("$.data.state").value("CANCELADO"))
+                .andExpect(jsonPath("$.data.id").value(RISK_ID.toString()));
     }
 
     @Test
@@ -66,12 +67,14 @@ class RiskControllerTest {
         mockMvc.perform(post("/riesgos/" + UNKNOWN_ID + "/cancelar")
                         .header(API_KEY_HEADER, API_KEY_VALUE))
                 .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.error").exists());
+                .andExpect(jsonPath("$.httpStatus").value(404))
+                .andExpect(jsonPath("$.message").exists());
     }
 
     @Test
     void deberiaRetornar401SinApiKey() throws Exception {
         mockMvc.perform(post("/riesgos/" + RISK_ID + "/cancelar"))
-                .andExpect(status().isUnauthorized());
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.httpStatus").value(401));
     }
 }
