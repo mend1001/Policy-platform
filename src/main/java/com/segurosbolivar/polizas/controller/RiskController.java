@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/${api.version}/riesgos")
+@RequestMapping("${api.version}/riesgos")
 @RequiredArgsConstructor
 public class RiskController {
 
