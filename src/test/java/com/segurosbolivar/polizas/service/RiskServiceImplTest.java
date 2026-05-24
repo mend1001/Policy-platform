@@ -170,6 +170,32 @@ class RiskServiceImplTest {
     }
 
     @Test
+    void deberiaEncontrarRiesgoPorId() {
+        UUID riesgoId = UUID.randomUUID();
+        UUID polizaId = UUID.randomUUID();
+        Policy policy = polizaActivaColectiva(polizaId);
+        User insured = usuario(UUID.randomUUID());
+        RiskState activo = estadoRiesgo("ACTIVO");
+        Risk risk = riesgoActivo(policy, insured, activo);
+
+        when(riskRepository.findById(riesgoId)).thenReturn(Optional.of(risk));
+
+        RiskResponse result = riskService.findById(riesgoId);
+
+        assertThat(result.getState()).isEqualTo("ACTIVO");
+        verify(riskRepository).findById(riesgoId);
+    }
+
+    @Test
+    void deberiaLanzarExcepcionAlBuscarRiesgoInexistente() {
+        UUID riesgoId = UUID.randomUUID();
+        when(riskRepository.findById(riesgoId)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> riskService.findById(riesgoId))
+                .isInstanceOf(ResourceNotFoundException.class);
+    }
+
+    @Test
     void deberiaLanzarExcepcionAlListarRiesgosDePolicyInexistente() {
         UUID polizaId = UUID.randomUUID();
         Pageable pageable = PageRequest.of(0, 10);

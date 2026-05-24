@@ -127,6 +127,53 @@ class PolicyServiceImplTest {
     }
 
     @Test
+    void deberiaEncontrarPolizaPorId() {
+        UUID id = UUID.randomUUID();
+        Policy policy = polizaActivaIndividual(id);
+        when(policyRepository.findById(id)).thenReturn(Optional.of(policy));
+
+        PolicyResponse result = policyService.findById(id);
+
+        assertThat(result.getId()).isEqualTo(id);
+        assertThat(result.getType()).isEqualTo("INDIVIDUAL");
+    }
+
+    @Test
+    void deberiaLanzarExcepcionAlBuscarPolizaInexistente() {
+        UUID id = UUID.randomUUID();
+        when(policyRepository.findById(id)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> policyService.findById(id))
+                .isInstanceOf(ResourceNotFoundException.class);
+    }
+
+    @Test
+    void deberiaListarPolizasPorBeneficiario() {
+        UUID benefId = UUID.randomUUID();
+        Pageable pageable = PageRequest.of(0, 10);
+        when(policyRepository.findByBeneficiary_Id(benefId, pageable))
+                .thenReturn(new PageImpl<>(List.of(polizaActivaIndividual())));
+
+        Page<PolicyResponse> result = policyService.findByBeneficiary(benefId, pageable);
+
+        assertThat(result.getContent()).hasSize(1);
+        verify(policyRepository).findByBeneficiary_Id(benefId, pageable);
+    }
+
+    @Test
+    void deberiaListarPolizasPorTomador() {
+        UUID holderId = UUID.randomUUID();
+        Pageable pageable = PageRequest.of(0, 10);
+        when(policyRepository.findByHolder_Id(holderId, pageable))
+                .thenReturn(new PageImpl<>(List.of(polizaActivaColectiva())));
+
+        Page<PolicyResponse> result = policyService.findByHolder(holderId, pageable);
+
+        assertThat(result.getContent()).hasSize(1);
+        verify(policyRepository).findByHolder_Id(holderId, pageable);
+    }
+
+    @Test
     void deberiaRenovarPolizaExitosamente() {
         UUID id = UUID.randomUUID();
         Policy policy = polizaActivaIndividual(id);
