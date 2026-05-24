@@ -13,6 +13,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -26,6 +28,7 @@ import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -66,28 +69,30 @@ class PolicyControllerTest {
 
     @Test
     void deberiaListarTodasLasPolizas() throws Exception {
-        when(policyService.listarPolizas(null, null)).thenReturn(List.of(polizaResponse()));
+        when(policyService.listarPolizas(isNull(), isNull(), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(polizaResponse())));
 
         mockMvc.perform(get("/polizas")
                         .header(API_KEY_HEADER, API_KEY_VALUE))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.httpStatus").value(200))
                 .andExpect(jsonPath("$.message").exists())
-                .andExpect(jsonPath("$.data[0].type").value("INDIVIDUAL"))
-                .andExpect(jsonPath("$.data[0].state").value("ACTIVA"));
+                .andExpect(jsonPath("$.data.content[0].type").value("INDIVIDUAL"))
+                .andExpect(jsonPath("$.data.content[0].state").value("ACTIVA"))
+                .andExpect(jsonPath("$.data.totalElements").exists());
     }
 
     @Test
     void deberiaListarPolizasFiltrandoPorTipoYEstado() throws Exception {
-        when(policyService.listarPolizas("COLECTIVA", "ACTIVA"))
-                .thenReturn(List.of(polizaColectivaResponse()));
+        when(policyService.listarPolizas(eq("COLECTIVA"), eq("ACTIVA"), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(polizaColectivaResponse())));
 
         mockMvc.perform(get("/polizas")
                         .header(API_KEY_HEADER, API_KEY_VALUE)
                         .param("tipo", "COLECTIVA")
                         .param("estado", "ACTIVA"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data[0].type").value("COLECTIVA"));
+                .andExpect(jsonPath("$.data.content[0].type").value("COLECTIVA"));
     }
 
     @Test
@@ -100,21 +105,22 @@ class PolicyControllerTest {
 
     @Test
     void deberiaListarRiesgosDePoliza() throws Exception {
-        when(policyService.listarRiesgos(POLICY_ID)).thenReturn(List.of(riskResponse()));
+        when(riskService.listByPolicy(eq(POLICY_ID), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(riskResponse())));
 
-        mockMvc.perform(get("/polizas/" + POLICY_ID + "/riesgos")
+        mockMvc.perform(get("/polizas/" + POLICY_ID + "/risks")
                         .header(API_KEY_HEADER, API_KEY_VALUE))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.httpStatus").value(200))
-                .andExpect(jsonPath("$.data[0].state").value("ACTIVO"));
+                .andExpect(jsonPath("$.data.content[0].state").value("ACTIVO"));
     }
 
     @Test
     void deberiaRetornar404AlListarRiesgosDePolicyInexistente() throws Exception {
-        when(policyService.listarRiesgos(UNKNOWN_ID))
+        when(riskService.listByPolicy(eq(UNKNOWN_ID), any(Pageable.class)))
                 .thenThrow(new ResourceNotFoundException("Póliza no encontrada con id: " + UNKNOWN_ID));
 
-        mockMvc.perform(get("/polizas/" + UNKNOWN_ID + "/riesgos")
+        mockMvc.perform(get("/polizas/" + UNKNOWN_ID + "/risks")
                         .header(API_KEY_HEADER, API_KEY_VALUE))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.httpStatus").value(404))

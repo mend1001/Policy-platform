@@ -2,7 +2,6 @@ package com.segurosbolivar.polizas.service;
 
 import com.segurosbolivar.polizas.dto.request.RenovarPolicyRequest;
 import com.segurosbolivar.polizas.dto.response.PolicyResponse;
-import com.segurosbolivar.polizas.dto.response.RiskResponse;
 import com.segurosbolivar.polizas.exception.BusinessException;
 import com.segurosbolivar.polizas.exception.ResourceNotFoundException;
 import com.segurosbolivar.polizas.model.Notification;
@@ -26,6 +25,11 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -74,66 +78,52 @@ class PolicyServiceImplTest {
 
     @Test
     void deberiaListarTodasLasPolizasSinFiltros() {
+        Pageable pageable = PageRequest.of(0, 10);
         List<Policy> policies = List.of(polizaActivaIndividual(), polizaActivaColectiva());
-        when(policyRepository.findAll()).thenReturn(policies);
+        when(policyRepository.findAll(pageable)).thenReturn(new PageImpl<>(policies));
 
-        List<PolicyResponse> result = policyService.listarPolizas(null, null);
+        Page<PolicyResponse> result = policyService.listarPolizas(null, null, pageable);
 
-        assertThat(result).hasSize(2);
-        verify(policyRepository).findAll();
+        assertThat(result.getContent()).hasSize(2);
+        verify(policyRepository).findAll(pageable);
     }
 
     @Test
     void deberiaListarPolizasFiltrandoPorTipo() {
-        when(policyRepository.findByType_Name("INDIVIDUAL")).thenReturn(List.of(polizaActivaIndividual()));
+        Pageable pageable = PageRequest.of(0, 10);
+        when(policyRepository.findByType_Name("INDIVIDUAL", pageable))
+                .thenReturn(new PageImpl<>(List.of(polizaActivaIndividual())));
 
-        List<PolicyResponse> result = policyService.listarPolizas("INDIVIDUAL", null);
+        Page<PolicyResponse> result = policyService.listarPolizas("INDIVIDUAL", null, pageable);
 
-        assertThat(result).hasSize(1);
-        assertThat(result.get(0).getType()).isEqualTo("INDIVIDUAL");
-        verify(policyRepository).findByType_Name("INDIVIDUAL");
+        assertThat(result.getContent()).hasSize(1);
+        assertThat(result.getContent().get(0).getType()).isEqualTo("INDIVIDUAL");
+        verify(policyRepository).findByType_Name("INDIVIDUAL", pageable);
     }
 
     @Test
     void deberiaListarPolizasFiltrandoPorEstado() {
-        when(policyRepository.findByState_Name("ACTIVA")).thenReturn(List.of(polizaActivaIndividual()));
+        Pageable pageable = PageRequest.of(0, 10);
+        when(policyRepository.findByState_Name("ACTIVA", pageable))
+                .thenReturn(new PageImpl<>(List.of(polizaActivaIndividual())));
 
-        List<PolicyResponse> result = policyService.listarPolizas(null, "ACTIVA");
+        Page<PolicyResponse> result = policyService.listarPolizas(null, "ACTIVA", pageable);
 
-        assertThat(result).hasSize(1);
-        assertThat(result.get(0).getState()).isEqualTo("ACTIVA");
-        verify(policyRepository).findByState_Name("ACTIVA");
+        assertThat(result.getContent()).hasSize(1);
+        assertThat(result.getContent().get(0).getState()).isEqualTo("ACTIVA");
+        verify(policyRepository).findByState_Name("ACTIVA", pageable);
     }
 
     @Test
     void deberiaListarPolizasFiltrandoPorTipoYEstado() {
-        when(policyRepository.findByType_NameAndState_Name("COLECTIVA", "ACTIVA"))
-                .thenReturn(List.of(polizaActivaColectiva()));
+        Pageable pageable = PageRequest.of(0, 10);
+        when(policyRepository.findByType_NameAndState_Name("COLECTIVA", "ACTIVA", pageable))
+                .thenReturn(new PageImpl<>(List.of(polizaActivaColectiva())));
 
-        List<PolicyResponse> result = policyService.listarPolizas("COLECTIVA", "ACTIVA");
+        Page<PolicyResponse> result = policyService.listarPolizas("COLECTIVA", "ACTIVA", pageable);
 
-        assertThat(result).hasSize(1);
-        verify(policyRepository).findByType_NameAndState_Name("COLECTIVA", "ACTIVA");
-    }
-
-    @Test
-    void deberiaListarRiesgosDeLaPoliza() {
-        UUID id = UUID.randomUUID();
-        Policy policy = polizaActivaColectivaConRiesgos(id);
-        when(policyRepository.findById(id)).thenReturn(Optional.of(policy));
-
-        List<RiskResponse> result = policyService.listarRiesgos(id);
-
-        assertThat(result).hasSize(2);
-    }
-
-    @Test
-    void deberiaLanzarExcepcionAlListarRiesgosDePolicyInexistente() {
-        UUID id = UUID.randomUUID();
-        when(policyRepository.findById(id)).thenReturn(Optional.empty());
-
-        assertThatThrownBy(() -> policyService.listarRiesgos(id))
-                .isInstanceOf(ResourceNotFoundException.class);
+        assertThat(result.getContent()).hasSize(1);
+        verify(policyRepository).findByType_NameAndState_Name("COLECTIVA", "ACTIVA", pageable);
     }
 
     @Test
