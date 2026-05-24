@@ -208,7 +208,7 @@ class PolicyControllerTest {
         mockMvc.perform(post("/polizas/" + POLICY_ID + "/renovar")
                         .header(API_KEY_HEADER, API_KEY_VALUE)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(new RenovarPolicyRequest(0.09))))
+                        .content(objectMapper.writeValueAsString(new RenovarPolicyRequest(new BigDecimal("0.09")))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.httpStatus").value(200))
                 .andExpect(jsonPath("$.data.state").value("RENOVADA"));
@@ -222,7 +222,7 @@ class PolicyControllerTest {
         mockMvc.perform(post("/polizas/" + POLICY_ID + "/renovar")
                         .header(API_KEY_HEADER, API_KEY_VALUE)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(new RenovarPolicyRequest(0.09))))
+                        .content(objectMapper.writeValueAsString(new RenovarPolicyRequest(new BigDecimal("0.09")))))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.httpStatus").value(400))
                 .andExpect(jsonPath("$.message").value("No se puede renovar una póliza cancelada"));
@@ -276,7 +276,7 @@ class PolicyControllerTest {
                         .header(API_KEY_HEADER, API_KEY_VALUE)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(
-                                new AgregarRiskRequest(INSURED_ID, "Calle 100 # 9-67, Bogotá"))))
+                                AgregarRiskRequest.builder().insuredId(INSURED_ID).address("Calle 100 # 9-67, Bogotá").build())))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.httpStatus").value(201))
                 .andExpect(jsonPath("$.data.state").value("ACTIVO"));
@@ -292,7 +292,7 @@ class PolicyControllerTest {
                         .header(API_KEY_HEADER, API_KEY_VALUE)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(
-                                new AgregarRiskRequest(INSURED_ID, "Calle 100 # 9-67"))))
+                                AgregarRiskRequest.builder().insuredId(INSURED_ID).address("Calle 100 # 9-67, Bogotá").build())))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.httpStatus").value(400))
                 .andExpect(jsonPath("$.message").exists());

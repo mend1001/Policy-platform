@@ -55,12 +55,12 @@ public class RiskServiceImpl implements RiskService {
     @Override
     @Transactional
     public RiskResponse addRisk(UUID polizaId, AgregarRiskRequest request) {
-        log.info("Agregando riesgo a póliza id={}, insuredId={}", polizaId, request.getAseguradoId());
+        log.info("Agregando riesgo a póliza id={}, insuredId={}", polizaId, request.getInsuredId());
         Policy policy = findPolicyOrThrow(polizaId);
         addRiskValidation.validate(policy);
 
-        User insured = userRepository.findById(request.getAseguradoId())
-                .orElseThrow(() -> new ResourceNotFoundException("Usuario asegurado no encontrado con id: " + request.getAseguradoId()));
+        User insured = userRepository.findById(request.getInsuredId())
+                .orElseThrow(() -> new ResourceNotFoundException("Usuario asegurado no encontrado con id: " + request.getInsuredId()));
 
         RiskState activeState = riskStateRepository.findByName(STATE_ACTIVO)
                 .orElseThrow(() -> new BusinessException("Estado ACTIVO no encontrado en catálogo", HttpStatus.INTERNAL_SERVER_ERROR));
@@ -68,7 +68,8 @@ public class RiskServiceImpl implements RiskService {
         Risk risk = Risk.builder()
                 .policy(policy)
                 .insured(insured)
-                .address(request.getDireccion())
+                .address(request.getAddress())
+                .insuredValue(request.getInsuredValue())
                 .state(activeState)
                 .build();
 

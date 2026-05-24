@@ -129,7 +129,7 @@ public class PolicyServiceImpl implements PolicyService {
                 .canonAfter(canonAfter)
                 .premiumBefore(premiumBefore)
                 .premiumAfter(premiumAfter)
-                .ipcApplied(BigDecimal.valueOf(request.getIpc()))
+                .ipcApplied(request.getIpc())
                 .type("MANUAL")
                 .result("SUCCESS")
                 .coreSyncStatus("PENDING")
@@ -185,8 +185,8 @@ public class PolicyServiceImpl implements PolicyService {
                 .orElseThrow(() -> new BusinessException("Estado de riesgo no encontrado: " + name, HttpStatus.INTERNAL_SERVER_ERROR));
     }
 
-    private BigDecimal calculateCanonWithIpc(BigDecimal canon, Double ipc) {
-        return canon.multiply(BigDecimal.ONE.add(BigDecimal.valueOf(ipc)));
+    private BigDecimal calculateCanonWithIpc(BigDecimal canon, BigDecimal ipc) {
+        return canon.multiply(BigDecimal.ONE.add(ipc));
     }
 
     private BigDecimal calculatePremium(BigDecimal canon, Integer months) {

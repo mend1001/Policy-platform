@@ -81,7 +81,8 @@ class RiskServiceImplTest {
         Risk riesgoGuardado = riesgoActivo(policy, insured, activoState);
         when(riskRepository.save(any(Risk.class))).thenReturn(riesgoGuardado);
 
-        AgregarRiskRequest request = new AgregarRiskRequest(insuredId, "Calle 100 # 9-67, Bogotá");
+        AgregarRiskRequest request = AgregarRiskRequest.builder()
+                .insuredId(insuredId).address("Calle 100 # 9-67, Bogotá").build();
         RiskResponse result = riskService.addRisk(polizaId, request);
 
         assertThat(result.getState()).isEqualTo("ACTIVO");
@@ -96,7 +97,8 @@ class RiskServiceImplTest {
         Policy policy = polizaActivaIndividual(polizaId);
         when(policyRepository.findById(polizaId)).thenReturn(Optional.of(policy));
 
-        AgregarRiskRequest request = new AgregarRiskRequest(insuredId, "Calle 100 # 9-67");
+        AgregarRiskRequest request = AgregarRiskRequest.builder()
+                .insuredId(insuredId).address("Calle 100 # 9-67, Bogotá").build();
 
         assertThatThrownBy(() -> riskService.addRisk(polizaId, request))
                 .isInstanceOf(BusinessException.class)
@@ -111,7 +113,8 @@ class RiskServiceImplTest {
         UUID insuredId = UUID.randomUUID();
         when(policyRepository.findById(polizaId)).thenReturn(Optional.empty());
 
-        AgregarRiskRequest request = new AgregarRiskRequest(insuredId, "Calle 100");
+        AgregarRiskRequest request = AgregarRiskRequest.builder()
+                .insuredId(insuredId).address("Calle 100 # 9-67, Bogotá").build();
 
         assertThatThrownBy(() -> riskService.addRisk(polizaId, request))
                 .isInstanceOf(ResourceNotFoundException.class);

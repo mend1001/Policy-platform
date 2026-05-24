@@ -184,7 +184,7 @@ class PolicyServiceImplTest {
         when(policyStateRepository.findByName("RENOVADA")).thenReturn(Optional.of(renovadaState));
         when(policyRepository.save(any(Policy.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        RenovarPolicyRequest request = new RenovarPolicyRequest(0.09);
+        RenovarPolicyRequest request = new RenovarPolicyRequest(new BigDecimal("0.09"));
         PolicyResponse result = policyService.renewPolicy(id, request);
 
         assertThat(result.getState()).isEqualTo("RENOVADA");
@@ -198,7 +198,7 @@ class PolicyServiceImplTest {
         Policy policy = polizaCancelada(id);
         when(policyRepository.findById(id)).thenReturn(Optional.of(policy));
 
-        RenovarPolicyRequest request = new RenovarPolicyRequest(0.09);
+        RenovarPolicyRequest request = new RenovarPolicyRequest(new BigDecimal("0.09"));
 
         assertThatThrownBy(() -> policyService.renewPolicy(id, request))
                 .isInstanceOf(BusinessException.class)
@@ -236,7 +236,7 @@ class PolicyServiceImplTest {
         when(policyStateRepository.findByName("RENOVADA")).thenReturn(Optional.of(estadoPoliza("RENOVADA")));
         when(policyRepository.save(any(Policy.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        policyService.renewPolicy(id, new RenovarPolicyRequest(0.05));
+        policyService.renewPolicy(id, new RenovarPolicyRequest(new BigDecimal("0.05")));
 
         verify(renewalRepository).save(any(Renewal.class));
     }
@@ -250,7 +250,7 @@ class PolicyServiceImplTest {
         when(policyStateRepository.findByName("RENOVADA")).thenReturn(Optional.of(estadoPoliza("RENOVADA")));
         when(policyRepository.save(any(Policy.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        policyService.renewPolicy(id, new RenovarPolicyRequest(0.05));
+        policyService.renewPolicy(id, new RenovarPolicyRequest(new BigDecimal("0.05")));
 
         verify(notificationRepository).save(any(Notification.class));
     }

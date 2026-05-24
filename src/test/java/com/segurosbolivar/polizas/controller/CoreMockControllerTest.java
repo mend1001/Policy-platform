@@ -13,6 +13,8 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import tools.jackson.databind.ObjectMapper;
 
+import java.util.UUID;
+
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.when;
@@ -25,6 +27,7 @@ class CoreMockControllerTest {
 
     private static final String API_KEY_HEADER = "x-api-key";
     private static final String API_KEY_VALUE  = "123456";
+    private static final UUID POLICY_UUID = UUID.fromString("550e8400-e29b-41d4-a716-446655440001");
 
     @Autowired
     private MockMvc mockMvc;
@@ -48,8 +51,8 @@ class CoreMockControllerTest {
         doNothing().when(coreMockService).sendEvent(any(CoreEventRequest.class));
 
         CoreEventRequest request = CoreEventRequest.builder()
-                .evento("ACTUALIZACION")
-                .polizaId("550e8400-e29b-41d4-a716-446655440001")
+                .event("ACTUALIZACION")
+                .policyId(POLICY_UUID)
                 .build();
 
         mockMvc.perform(post("/core-mock/evento")
@@ -65,8 +68,8 @@ class CoreMockControllerTest {
     @Test
     void deberiaRetornar401SinApiKey() throws Exception {
         CoreEventRequest request = CoreEventRequest.builder()
-                .evento("ACTUALIZACION")
-                .polizaId("550e8400-e29b-41d4-a716-446655440001")
+                .event("ACTUALIZACION")
+                .policyId(POLICY_UUID)
                 .build();
 
         mockMvc.perform(post("/core-mock/evento")
