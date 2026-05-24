@@ -10,11 +10,14 @@ import com.segurosbolivar.polizas.service.PolicyService;
 import com.segurosbolivar.polizas.service.RiskService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -26,17 +29,20 @@ public class PolicyController {
     private final RiskService riskService;
 
     @GetMapping
-    public ResponseEntity<ApiResponse<List<PolicyResponse>>> listarPolizas(
+    public ResponseEntity<ApiResponse<Page<PolicyResponse>>> listarPolizas(
             @RequestParam(required = false) String tipo,
-            @RequestParam(required = false) String estado) {
+            @RequestParam(required = false) String estado,
+            @PageableDefault(size = 10, sort = "startDate", direction = Sort.Direction.DESC) Pageable pageable) {
         return ResponseEntity.ok(
-                ApiResponse.ok(policyService.listarPolizas(tipo, estado), ApiMessages.POLICIES_LISTED));
+                ApiResponse.ok(policyService.listarPolizas(tipo, estado, pageable), ApiMessages.POLICIES_LISTED));
     }
 
-    @GetMapping("/{id}/riesgos")
-    public ResponseEntity<ApiResponse<List<RiskResponse>>> listarRiesgos(@PathVariable UUID id) {
+    @GetMapping("/{id}/risks")
+    public ResponseEntity<ApiResponse<Page<RiskResponse>>> listarRiesgos(
+            @PathVariable UUID id,
+            @PageableDefault(size = 10) Pageable pageable) {
         return ResponseEntity.ok(
-                ApiResponse.ok(policyService.listarRiesgos(id), ApiMessages.RISKS_LISTED));
+                ApiResponse.ok(riskService.listByPolicy(id, pageable), ApiMessages.RISKS_LISTED));
     }
 
     @PostMapping("/{id}/renovar")
