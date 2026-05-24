@@ -1,6 +1,8 @@
 package com.segurosbolivar.polizas.security;
 
 import com.segurosbolivar.polizas.config.AppProperties;
+import com.segurosbolivar.polizas.dto.response.ApiMessages;
+import com.segurosbolivar.polizas.dto.response.ApiResponse;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -10,6 +12,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
+import tools.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
 
@@ -19,9 +22,9 @@ import java.io.IOException;
 public class ApiKeyFilter extends OncePerRequestFilter {
 
     private static final String HEADER_API_KEY = "x-api-key";
-    private static final String ERROR_API_KEY_INVALIDA = "{\"error\": \"API Key inv\\u00e1lida o ausente\"}";
 
     private final AppProperties appProperties;
+    private final ObjectMapper objectMapper;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
@@ -33,7 +36,8 @@ public class ApiKeyFilter extends OncePerRequestFilter {
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             response.setContentType(MediaType.APPLICATION_JSON_VALUE);
             response.setCharacterEncoding("UTF-8");
-            response.getWriter().write(ERROR_API_KEY_INVALIDA);
+            response.getWriter().write(
+                    objectMapper.writeValueAsString(ApiResponse.error(401, ApiMessages.INVALID_API_KEY)));
             return;
         }
         filterChain.doFilter(request, response);
