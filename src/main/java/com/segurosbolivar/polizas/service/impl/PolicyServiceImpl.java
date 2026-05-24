@@ -80,6 +80,25 @@ public class PolicyServiceImpl implements PolicyService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public PolicyResponse findById(UUID id) {
+        Policy policy = buscarPolicyOLanzarExcepcion(id);
+        return PolicyResponse.from(policy);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<PolicyResponse> findByBeneficiary(UUID beneficiaryId, Pageable pageable) {
+        return policyRepository.findByBeneficiary_Id(beneficiaryId, pageable).map(PolicyResponse::from);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<PolicyResponse> findByHolder(UUID holderId, Pageable pageable) {
+        return policyRepository.findByHolder_Id(holderId, pageable).map(PolicyResponse::from);
+    }
+
+    @Override
     @Transactional
     public PolicyResponse renovarPoliza(UUID polizaId, RenovarPolicyRequest request) {
         log.info("Renovando póliza id={}, ipc={}", polizaId, request.getIpc());

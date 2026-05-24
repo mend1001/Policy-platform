@@ -17,6 +17,12 @@ public class RiskController {
 
     private final RiskService riskService;
 
+    @GetMapping("/{id}")
+    public ResponseEntity<ApiResponse<RiskResponse>> findById(@PathVariable UUID id) {
+        return ResponseEntity.ok(
+                ApiResponse.ok(riskService.findById(id), ApiMessages.RISK_FOUND));
+    }
+
     @PostMapping("/{id}/cancelar")
     public ResponseEntity<ApiResponse<RiskResponse>> cancelarRiesgo(@PathVariable UUID id) {
         return ResponseEntity.ok(

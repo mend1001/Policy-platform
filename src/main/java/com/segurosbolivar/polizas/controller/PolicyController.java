@@ -37,6 +37,28 @@ public class PolicyController {
                 ApiResponse.ok(policyService.listarPolizas(tipo, estado, pageable), ApiMessages.POLICIES_LISTED));
     }
 
+    @GetMapping("/{id}")
+    public ResponseEntity<ApiResponse<PolicyResponse>> findById(@PathVariable UUID id) {
+        return ResponseEntity.ok(
+                ApiResponse.ok(policyService.findById(id), ApiMessages.POLICY_FOUND));
+    }
+
+    @GetMapping("/beneficiary/{beneficiaryId}")
+    public ResponseEntity<ApiResponse<Page<PolicyResponse>>> findByBeneficiary(
+            @PathVariable UUID beneficiaryId,
+            @PageableDefault(size = 10) Pageable pageable) {
+        return ResponseEntity.ok(
+                ApiResponse.ok(policyService.findByBeneficiary(beneficiaryId, pageable), ApiMessages.POLICIES_LISTED));
+    }
+
+    @GetMapping("/holder/{holderId}")
+    public ResponseEntity<ApiResponse<Page<PolicyResponse>>> findByHolder(
+            @PathVariable UUID holderId,
+            @PageableDefault(size = 10) Pageable pageable) {
+        return ResponseEntity.ok(
+                ApiResponse.ok(policyService.findByHolder(holderId, pageable), ApiMessages.POLICIES_LISTED));
+    }
+
     @GetMapping("/{id}/risks")
     public ResponseEntity<ApiResponse<Page<RiskResponse>>> listarRiesgos(
             @PathVariable UUID id,

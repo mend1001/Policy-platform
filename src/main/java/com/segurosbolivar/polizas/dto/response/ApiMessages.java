@@ -8,6 +8,7 @@ public final class ApiMessages {
     public static final String POLICIES_LISTED  = "Policies listed successfully";
     public static final String POLICY_RENEWED   = "Policy renewed successfully";
     public static final String POLICY_CANCELLED = "Policy cancelled successfully";
+    public static final String RISK_FOUND       = "Risk retrieved successfully";
     public static final String RISK_ADDED       = "Risk added successfully";
     public static final String RISK_CANCELLED   = "Risk cancelled successfully";
     public static final String RISKS_LISTED     = "Risks listed successfully";
