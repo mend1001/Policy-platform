@@ -14,6 +14,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.util.UUID;
 
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -44,34 +45,66 @@ class RiskControllerTest {
     }
 
     @Test
+    void deberiaObtenerRiesgoPorId() throws Exception {
+        RiskResponse activo = RiskResponse.builder()
+                .id(RISK_ID).policyId(POLICY_ID).insuredId(INSURED_ID)
+                .address("Calle 100 # 9-67, Bogotá").state("ACTIVO").build();
+
+        when(riskService.findById(RISK_ID)).thenReturn(activo);
+
+        mockMvc.perform(get("/riesgos/" + RISK_ID)
+                        .header(API_KEY_HEADER, API_KEY_VALUE))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.httpStatus").value(200))
+                .andExpect(jsonPath("$.message").exists())
+                .andExpect(jsonPath("$.data.state").value("ACTIVO"))
+                .andExpect(jsonPath("$.data.id").value(RISK_ID.toString()));
+    }
+
+    @Test
+    void deberiaRetornar404AlBuscarRiesgoInexistente() throws Exception {
+        when(riskService.findById(UNKNOWN_ID))
+                .thenThrow(new ResourceNotFoundException("Riesgo no encontrado con id: " + UNKNOWN_ID));
+
+        mockMvc.perform(get("/riesgos/" + UNKNOWN_ID)
+                        .header(API_KEY_HEADER, API_KEY_VALUE))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.httpStatus").value(404))
+                .andExpect(jsonPath("$.message").exists());
+    }
+
+    @Test
     void deberiaCancelarRiesgoExitosamente() throws Exception {
         RiskResponse cancelado = RiskResponse.builder()
                 .id(RISK_ID).policyId(POLICY_ID).insuredId(INSURED_ID)
                 .address("Calle 100 # 9-67, Bogotá").state("CANCELADO").build();
 
-        when(riskService.cancelarRiesgo(RISK_ID)).thenReturn(cancelado);
+        when(riskService.cancelRisk(RISK_ID)).thenReturn(cancelado);
 
         mockMvc.perform(post("/riesgos/" + RISK_ID + "/cancelar")
                         .header(API_KEY_HEADER, API_KEY_VALUE))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.state").value("CANCELADO"))
-                .andExpect(jsonPath("$.id").value(RISK_ID.toString()));
+                .andExpect(jsonPath("$.httpStatus").value(200))
+                .andExpect(jsonPath("$.data.state").value("CANCELADO"))
+                .andExpect(jsonPath("$.data.id").value(RISK_ID.toString()));
     }
 
     @Test
     void deberiaRetornar404AlCancelarRiesgoInexistente() throws Exception {
-        when(riskService.cancelarRiesgo(UNKNOWN_ID))
+        when(riskService.cancelRisk(UNKNOWN_ID))
                 .thenThrow(new ResourceNotFoundException("Riesgo no encontrado con id: " + UNKNOWN_ID));
 
         mockMvc.perform(post("/riesgos/" + UNKNOWN_ID + "/cancelar")
                         .header(API_KEY_HEADER, API_KEY_VALUE))
                 .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.error").exists());
+                .andExpect(jsonPath("$.httpStatus").value(404))
+                .andExpect(jsonPath("$.message").exists());
     }
 
     @Test
     void deberiaRetornar401SinApiKey() throws Exception {
         mockMvc.perform(post("/riesgos/" + RISK_ID + "/cancelar"))
-                .andExpect(status().isUnauthorized());
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.httpStatus").value(401));
     }
 }

@@ -16,16 +16,22 @@ import com.segurosbolivar.polizas.repository.UserRepository;
 import com.segurosbolivar.polizas.repository.catalog.RiskStateRepository;
 import com.segurosbolivar.polizas.service.impl.RiskServiceImpl;
 import com.segurosbolivar.polizas.service.validation.PolicyValidationStrategy;
-import com.segurosbolivar.polizas.service.validation.impl.AgregarRiskValidation;
+import com.segurosbolivar.polizas.service.validation.impl.AddRiskValidation;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -54,7 +60,7 @@ class RiskServiceImplTest {
 
     @BeforeEach
     void setUp() {
-        agregarRiskValidation = new AgregarRiskValidation();
+        agregarRiskValidation = new AddRiskValidation();
         riskService = new RiskServiceImpl(
                 policyRepository, riskRepository, riskStateRepository,
                 userRepository, agregarRiskValidation);
@@ -75,8 +81,9 @@ class RiskServiceImplTest {
         Risk riesgoGuardado = riesgoActivo(policy, insured, activoState);
         when(riskRepository.save(any(Risk.class))).thenReturn(riesgoGuardado);
 
-        AgregarRiskRequest request = new AgregarRiskRequest(insuredId, "Calle 100 # 9-67, Bogotá");
-        RiskResponse result = riskService.agregarRiesgo(polizaId, request);
+        AgregarRiskRequest request = AgregarRiskRequest.builder()
+                .insuredId(insuredId).address("Calle 100 # 9-67, Bogotá").build();
+        RiskResponse result = riskService.addRisk(polizaId, request);
 
         assertThat(result.getState()).isEqualTo("ACTIVO");
         assertThat(result.getInsuredId()).isEqualTo(insuredId);
@@ -90,9 +97,10 @@ class RiskServiceImplTest {
         Policy policy = polizaActivaIndividual(polizaId);
         when(policyRepository.findById(polizaId)).thenReturn(Optional.of(policy));
 
-        AgregarRiskRequest request = new AgregarRiskRequest(insuredId, "Calle 100 # 9-67");
+        AgregarRiskRequest request = AgregarRiskRequest.builder()
+                .insuredId(insuredId).address("Calle 100 # 9-67, Bogotá").build();
 
-        assertThatThrownBy(() -> riskService.agregarRiesgo(polizaId, request))
+        assertThatThrownBy(() -> riskService.addRisk(polizaId, request))
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("COLECTIVA");
 
@@ -105,9 +113,10 @@ class RiskServiceImplTest {
         UUID insuredId = UUID.randomUUID();
         when(policyRepository.findById(polizaId)).thenReturn(Optional.empty());
 
-        AgregarRiskRequest request = new AgregarRiskRequest(insuredId, "Calle 100");
+        AgregarRiskRequest request = AgregarRiskRequest.builder()
+                .insuredId(insuredId).address("Calle 100 # 9-67, Bogotá").build();
 
-        assertThatThrownBy(() -> riskService.agregarRiesgo(polizaId, request))
+        assertThatThrownBy(() -> riskService.addRisk(polizaId, request))
                 .isInstanceOf(ResourceNotFoundException.class);
     }
 
@@ -127,7 +136,7 @@ class RiskServiceImplTest {
         when(riskStateRepository.findByName("CANCELADO")).thenReturn(Optional.of(canceladoState));
         when(riskRepository.save(any(Risk.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        RiskResponse result = riskService.cancelarRiesgo(riesgoId);
+        RiskResponse result = riskService.cancelRisk(riesgoId);
 
         assertThat(result.getState()).isEqualTo("CANCELADO");
         verify(riskRepository).save(risk);
@@ -138,8 +147,100 @@ class RiskServiceImplTest {
         UUID riesgoId = UUID.randomUUID();
         when(riskRepository.findById(riesgoId)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> riskService.cancelarRiesgo(riesgoId))
+        assertThatThrownBy(() -> riskService.cancelRisk(riesgoId))
                 .isInstanceOf(ResourceNotFoundException.class);
+    }
+
+    @Test
+    void deberiaListarRiesgosPorPoliza() {
+        UUID polizaId = UUID.randomUUID();
+        Pageable pageable = PageRequest.of(0, 10);
+        Policy policy = polizaActivaColectiva(polizaId);
+        User insured = usuario(UUID.randomUUID());
+        RiskState activo = estadoRiesgo("ACTIVO");
+        Risk r1 = riesgoActivo(policy, insured, activo);
+        Risk r2 = riesgoActivo(policy, insured, activo);
+
+        when(policyRepository.findById(polizaId)).thenReturn(Optional.of(policy));
+        when(riskRepository.findByPolicy_Id(polizaId, pageable))
+                .thenReturn(new PageImpl<>(List.of(r1, r2)));
+
+        Page<RiskResponse> result = riskService.listByPolicy(polizaId, pageable);
+
+        assertThat(result.getContent()).hasSize(2);
+        assertThat(result.getContent().get(0).getState()).isEqualTo("ACTIVO");
+        verify(riskRepository).findByPolicy_Id(polizaId, pageable);
+    }
+
+    @Test
+    void deberiaEncontrarRiesgoPorId() {
+        UUID riesgoId = UUID.randomUUID();
+        UUID polizaId = UUID.randomUUID();
+        Policy policy = polizaActivaColectiva(polizaId);
+        User insured = usuario(UUID.randomUUID());
+        RiskState activo = estadoRiesgo("ACTIVO");
+        Risk risk = riesgoActivo(policy, insured, activo);
+
+        when(riskRepository.findById(riesgoId)).thenReturn(Optional.of(risk));
+
+        RiskResponse result = riskService.findById(riesgoId);
+
+        assertThat(result.getState()).isEqualTo("ACTIVO");
+        verify(riskRepository).findById(riesgoId);
+    }
+
+    @Test
+    void deberiaLanzarExcepcionAlBuscarRiesgoInexistente() {
+        UUID riesgoId = UUID.randomUUID();
+        when(riskRepository.findById(riesgoId)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> riskService.findById(riesgoId))
+                .isInstanceOf(ResourceNotFoundException.class);
+    }
+
+    @Test
+    void deberiaLanzarExcepcionAlListarRiesgosDePolicyInexistente() {
+        UUID polizaId = UUID.randomUUID();
+        Pageable pageable = PageRequest.of(0, 10);
+        when(policyRepository.findById(polizaId)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> riskService.listByPolicy(polizaId, pageable))
+                .isInstanceOf(ResourceNotFoundException.class);
+    }
+
+    @Test
+    void deberiaLanzar409AlCancelarRiesgoYaCancelado() {
+        UUID riesgoId = UUID.randomUUID();
+        UUID polizaId = UUID.randomUUID();
+        Policy policy = polizaActivaColectiva(polizaId);
+        User insured = usuario(UUID.randomUUID());
+        RiskState canceladoState = estadoRiesgo("CANCELADO");
+        Risk risk = riesgoActivo(policy, insured, canceladoState);
+
+        when(riskRepository.findById(riesgoId)).thenReturn(Optional.of(risk));
+
+        assertThatThrownBy(() -> riskService.cancelRisk(riesgoId))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("already cancelled");
+
+        verify(riskRepository, never()).save(any());
+    }
+
+    @Test
+    void deberiaLanzar409AlAgregarRiesgoAPolizaCancelada() {
+        UUID polizaId = UUID.randomUUID();
+        UUID insuredId = UUID.randomUUID();
+        Policy policy = polizaCanceladaColectiva(polizaId);
+        when(policyRepository.findById(polizaId)).thenReturn(Optional.of(policy));
+
+        AgregarRiskRequest request = AgregarRiskRequest.builder()
+                .insuredId(insuredId).address("Calle 100 # 9-67, Bogotá").build();
+
+        assertThatThrownBy(() -> riskService.addRisk(polizaId, request))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("not active");
+
+        verify(riskRepository, never()).save(any());
     }
 
     // ── helpers ──────────────────────────────────────────────────────────────
@@ -174,6 +275,22 @@ class RiskServiceImplTest {
                 .id(id)
                 .type(PolicyType.builder().id(UUID.randomUUID()).name("COLECTIVA").build())
                 .state(PolicyState.builder().id(UUID.randomUUID()).name("ACTIVA").build())
+                .holder(usuario(UUID.randomUUID()))
+                .beneficiary(usuario(UUID.randomUUID()))
+                .canon(new BigDecimal("3500000.00"))
+                .premium(new BigDecimal("84000000.00"))
+                .months(24)
+                .startDate(LocalDate.of(2024, 1, 1))
+                .endDate(LocalDate.of(2026, 1, 1))
+                .risks(new ArrayList<>())
+                .build();
+    }
+
+    private Policy polizaCanceladaColectiva(UUID id) {
+        return Policy.builder()
+                .id(id)
+                .type(PolicyType.builder().id(UUID.randomUUID()).name("COLECTIVA").build())
+                .state(PolicyState.builder().id(UUID.randomUUID()).name("CANCELADA").build())
                 .holder(usuario(UUID.randomUUID()))
                 .beneficiary(usuario(UUID.randomUUID()))
                 .canon(new BigDecimal("3500000.00"))

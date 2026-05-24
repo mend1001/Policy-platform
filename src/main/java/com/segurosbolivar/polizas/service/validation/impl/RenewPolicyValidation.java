@@ -6,15 +6,15 @@ import com.segurosbolivar.polizas.service.validation.PolicyValidationStrategy;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 
-@Component
-public class AgregarRiskValidation implements PolicyValidationStrategy {
+@Component("renewPolicyValidation")
+public class RenewPolicyValidation implements PolicyValidationStrategy {
 
-    private static final String MSG_SOLO_COLECTIVA = "Solo se pueden agregar riesgos a pólizas de tipo COLECTIVA";
+    private static final String MSG_NO_RENOVAR_CANCELADA = "No se puede renovar una póliza cancelada";
 
     @Override
     public void validate(Policy policy) {
-        if (!"COLECTIVA".equals(policy.getType().getName())) {
-            throw new BusinessException(MSG_SOLO_COLECTIVA, HttpStatus.BAD_REQUEST);
+        if ("CANCELADA".equals(policy.getState().getName())) {
+            throw new BusinessException(MSG_NO_RENOVAR_CANCELADA, HttpStatus.BAD_REQUEST);
         }
     }
 }

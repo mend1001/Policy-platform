@@ -13,6 +13,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -26,6 +28,7 @@ import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -66,53 +69,130 @@ class PolicyControllerTest {
 
     @Test
     void deberiaListarTodasLasPolizas() throws Exception {
-        when(policyService.listarPolizas(null, null)).thenReturn(List.of(polizaResponse()));
+        when(policyService.listPolicies(isNull(), isNull(), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(polizaResponse())));
 
         mockMvc.perform(get("/polizas")
                         .header(API_KEY_HEADER, API_KEY_VALUE))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].type").value("INDIVIDUAL"))
-                .andExpect(jsonPath("$[0].state").value("ACTIVA"));
+                .andExpect(jsonPath("$.httpStatus").value(200))
+                .andExpect(jsonPath("$.message").exists())
+                .andExpect(jsonPath("$.data.content[0].type").value("INDIVIDUAL"))
+                .andExpect(jsonPath("$.data.content[0].state").value("ACTIVA"))
+                .andExpect(jsonPath("$.data.totalElements").exists());
+    }
+
+    @Test
+    void deberiaResponderConEstructuraPaginadaCompleta() throws Exception {
+        when(policyService.listPolicies(isNull(), isNull(), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(polizaResponse(), polizaColectivaResponse())));
+
+        mockMvc.perform(get("/polizas")
+                        .header(API_KEY_HEADER, API_KEY_VALUE)
+                        .param("page", "0")
+                        .param("size", "5"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.httpStatus").value(200))
+                .andExpect(jsonPath("$.data.content").isArray())
+                .andExpect(jsonPath("$.data.totalElements").exists())
+                .andExpect(jsonPath("$.data.totalPages").exists())
+                .andExpect(jsonPath("$.data.size").exists());
     }
 
     @Test
     void deberiaListarPolizasFiltrandoPorTipoYEstado() throws Exception {
-        when(policyService.listarPolizas("COLECTIVA", "ACTIVA"))
-                .thenReturn(List.of(polizaColectivaResponse()));
+        when(policyService.listPolicies(eq("COLECTIVA"), eq("ACTIVA"), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(polizaColectivaResponse())));
 
         mockMvc.perform(get("/polizas")
                         .header(API_KEY_HEADER, API_KEY_VALUE)
                         .param("tipo", "COLECTIVA")
                         .param("estado", "ACTIVA"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].type").value("COLECTIVA"));
+                .andExpect(jsonPath("$.data.content[0].type").value("COLECTIVA"));
     }
 
     @Test
     void deberiaRetornar401SinApiKey() throws Exception {
         mockMvc.perform(get("/polizas"))
-                .andExpect(status().isUnauthorized());
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.httpStatus").value(401))
+                .andExpect(jsonPath("$.message").exists());
+    }
+
+    @Test
+    void deberiaObtenerPolizaPorId() throws Exception {
+        when(policyService.findById(POLICY_ID)).thenReturn(polizaResponse());
+
+        mockMvc.perform(get("/polizas/" + POLICY_ID)
+                        .header(API_KEY_HEADER, API_KEY_VALUE))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.httpStatus").value(200))
+                .andExpect(jsonPath("$.message").exists())
+                .andExpect(jsonPath("$.data.type").value("INDIVIDUAL"))
+                .andExpect(jsonPath("$.data.state").value("ACTIVA"));
+    }
+
+    @Test
+    void deberiaRetornar404AlBuscarPolizaInexistente() throws Exception {
+        when(policyService.findById(UNKNOWN_ID))
+                .thenThrow(new ResourceNotFoundException("Póliza no encontrada con id: " + UNKNOWN_ID));
+
+        mockMvc.perform(get("/polizas/" + UNKNOWN_ID)
+                        .header(API_KEY_HEADER, API_KEY_VALUE))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.httpStatus").value(404))
+                .andExpect(jsonPath("$.message").exists());
+    }
+
+    @Test
+    void deberiaListarPolizasPorBeneficiario() throws Exception {
+        when(policyService.findByBeneficiary(eq(BENEFICIARY), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(polizaResponse())));
+
+        mockMvc.perform(get("/polizas/beneficiary/" + BENEFICIARY)
+                        .header(API_KEY_HEADER, API_KEY_VALUE))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.httpStatus").value(200))
+                .andExpect(jsonPath("$.data.content[0].type").value("INDIVIDUAL"))
+                .andExpect(jsonPath("$.data.totalElements").exists());
+    }
+
+    @Test
+    void deberiaListarPolizasPorTomador() throws Exception {
+        when(policyService.findByHolder(eq(HOLDER_ID), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(polizaResponse())));
+
+        mockMvc.perform(get("/polizas/holder/" + HOLDER_ID)
+                        .header(API_KEY_HEADER, API_KEY_VALUE))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.httpStatus").value(200))
+                .andExpect(jsonPath("$.data.content[0].type").value("INDIVIDUAL"))
+                .andExpect(jsonPath("$.data.totalElements").exists());
     }
 
     @Test
     void deberiaListarRiesgosDePoliza() throws Exception {
-        when(policyService.listarRiesgos(POLICY_ID)).thenReturn(List.of(riskResponse()));
+        when(riskService.listByPolicy(eq(POLICY_ID), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(riskResponse())));
 
-        mockMvc.perform(get("/polizas/" + POLICY_ID + "/riesgos")
+        mockMvc.perform(get("/polizas/" + POLICY_ID + "/risks")
                         .header(API_KEY_HEADER, API_KEY_VALUE))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].state").value("ACTIVO"));
+                .andExpect(jsonPath("$.httpStatus").value(200))
+                .andExpect(jsonPath("$.data.content[0].state").value("ACTIVO"));
     }
 
     @Test
     void deberiaRetornar404AlListarRiesgosDePolicyInexistente() throws Exception {
-        when(policyService.listarRiesgos(UNKNOWN_ID))
+        when(riskService.listByPolicy(eq(UNKNOWN_ID), any(Pageable.class)))
                 .thenThrow(new ResourceNotFoundException("Póliza no encontrada con id: " + UNKNOWN_ID));
 
-        mockMvc.perform(get("/polizas/" + UNKNOWN_ID + "/riesgos")
+        mockMvc.perform(get("/polizas/" + UNKNOWN_ID + "/risks")
                         .header(API_KEY_HEADER, API_KEY_VALUE))
                 .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.error").exists());
+                .andExpect(jsonPath("$.httpStatus").value(404))
+                .andExpect(jsonPath("$.message").exists());
     }
 
     @Test
@@ -123,27 +203,29 @@ class PolicyControllerTest {
                 .startDate(LocalDate.of(2024, 1, 1)).endDate(LocalDate.of(2025, 1, 1))
                 .months(12).holderId(HOLDER_ID).beneficiaryId(BENEFICIARY).build();
 
-        when(policyService.renovarPoliza(eq(POLICY_ID), any(RenovarPolicyRequest.class))).thenReturn(renovada);
+        when(policyService.renewPolicy(eq(POLICY_ID), any(RenovarPolicyRequest.class))).thenReturn(renovada);
 
         mockMvc.perform(post("/polizas/" + POLICY_ID + "/renovar")
                         .header(API_KEY_HEADER, API_KEY_VALUE)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(new RenovarPolicyRequest(0.09))))
+                        .content(objectMapper.writeValueAsString(new RenovarPolicyRequest(new BigDecimal("0.09")))))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.state").value("RENOVADA"));
+                .andExpect(jsonPath("$.httpStatus").value(200))
+                .andExpect(jsonPath("$.data.state").value("RENOVADA"));
     }
 
     @Test
     void deberiaRetornar400AlRenovarPolizaCancelada() throws Exception {
-        when(policyService.renovarPoliza(eq(POLICY_ID), any(RenovarPolicyRequest.class)))
+        when(policyService.renewPolicy(eq(POLICY_ID), any(RenovarPolicyRequest.class)))
                 .thenThrow(new BusinessException("No se puede renovar una póliza cancelada", HttpStatus.BAD_REQUEST));
 
         mockMvc.perform(post("/polizas/" + POLICY_ID + "/renovar")
                         .header(API_KEY_HEADER, API_KEY_VALUE)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(new RenovarPolicyRequest(0.09))))
+                        .content(objectMapper.writeValueAsString(new RenovarPolicyRequest(new BigDecimal("0.09")))))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error").value("No se puede renovar una póliza cancelada"));
+                .andExpect(jsonPath("$.httpStatus").value(400))
+                .andExpect(jsonPath("$.message").value("No se puede renovar una póliza cancelada"));
     }
 
     @Test
@@ -154,23 +236,25 @@ class PolicyControllerTest {
                 .startDate(LocalDate.of(2024, 1, 1)).endDate(LocalDate.of(2025, 1, 1))
                 .months(12).holderId(HOLDER_ID).beneficiaryId(BENEFICIARY).build();
 
-        when(policyService.cancelarPoliza(POLICY_ID)).thenReturn(cancelada);
+        when(policyService.cancelPolicy(POLICY_ID)).thenReturn(cancelada);
 
         mockMvc.perform(post("/polizas/" + POLICY_ID + "/cancelar")
                         .header(API_KEY_HEADER, API_KEY_VALUE))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.state").value("CANCELADA"));
+                .andExpect(jsonPath("$.httpStatus").value(200))
+                .andExpect(jsonPath("$.data.state").value("CANCELADA"));
     }
 
     @Test
     void deberiaRetornar404AlCancelarPolizaInexistente() throws Exception {
-        when(policyService.cancelarPoliza(UNKNOWN_ID))
+        when(policyService.cancelPolicy(UNKNOWN_ID))
                 .thenThrow(new ResourceNotFoundException("Póliza no encontrada con id: " + UNKNOWN_ID));
 
         mockMvc.perform(post("/polizas/" + UNKNOWN_ID + "/cancelar")
                         .header(API_KEY_HEADER, API_KEY_VALUE))
                 .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.error").exists());
+                .andExpect(jsonPath("$.httpStatus").value(404))
+                .andExpect(jsonPath("$.message").exists());
     }
 
     @Test
@@ -180,25 +264,27 @@ class PolicyControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"ipc\": null}"))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error").exists());
+                .andExpect(jsonPath("$.httpStatus").value(400))
+                .andExpect(jsonPath("$.message").exists());
     }
 
     @Test
     void deberiaAgregarRiesgoAPolizaColectiva() throws Exception {
-        when(riskService.agregarRiesgo(eq(POLICY_COL), any(AgregarRiskRequest.class))).thenReturn(riskResponse());
+        when(riskService.addRisk(eq(POLICY_COL), any(AgregarRiskRequest.class))).thenReturn(riskResponse());
 
         mockMvc.perform(post("/polizas/" + POLICY_COL + "/riesgos")
                         .header(API_KEY_HEADER, API_KEY_VALUE)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(
-                                new AgregarRiskRequest(INSURED_ID, "Calle 100 # 9-67, Bogotá"))))
+                                AgregarRiskRequest.builder().insuredId(INSURED_ID).address("Calle 100 # 9-67, Bogotá").build())))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.state").value("ACTIVO"));
+                .andExpect(jsonPath("$.httpStatus").value(201))
+                .andExpect(jsonPath("$.data.state").value("ACTIVO"));
     }
 
     @Test
     void deberiaRetornar400AlAgregarRiesgoAPolizaIndividual() throws Exception {
-        when(riskService.agregarRiesgo(eq(POLICY_ID), any(AgregarRiskRequest.class)))
+        when(riskService.addRisk(eq(POLICY_ID), any(AgregarRiskRequest.class)))
                 .thenThrow(new BusinessException("Solo se pueden agregar riesgos a pólizas de tipo COLECTIVA",
                         HttpStatus.BAD_REQUEST));
 
@@ -206,9 +292,79 @@ class PolicyControllerTest {
                         .header(API_KEY_HEADER, API_KEY_VALUE)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(
-                                new AgregarRiskRequest(INSURED_ID, "Calle 100 # 9-67"))))
+                                AgregarRiskRequest.builder().insuredId(INSURED_ID).address("Calle 100 # 9-67, Bogotá").build())))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error").exists());
+                .andExpect(jsonPath("$.httpStatus").value(400))
+                .andExpect(jsonPath("$.message").exists());
+    }
+
+    @Test
+    void deberiaRetornar400ConIpcMayorA1() throws Exception {
+        mockMvc.perform(post("/polizas/" + POLICY_ID + "/renovar")
+                        .header(API_KEY_HEADER, API_KEY_VALUE)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"ipc\":2.5}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.httpStatus").value(400));
+    }
+
+    @Test
+    void deberiaRetornar400ConIpcCero() throws Exception {
+        mockMvc.perform(post("/polizas/" + POLICY_ID + "/renovar")
+                        .header(API_KEY_HEADER, API_KEY_VALUE)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"ipc\":0}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.httpStatus").value(400));
+    }
+
+    @Test
+    void deberiaRetornar400ConBodyAusente() throws Exception {
+        mockMvc.perform(post("/polizas/" + POLICY_ID + "/renovar")
+                        .header(API_KEY_HEADER, API_KEY_VALUE)
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.httpStatus").value(400));
+    }
+
+    @Test
+    void deberiaRetornar400ConUUIDInvalido() throws Exception {
+        mockMvc.perform(get("/polizas/not-a-uuid")
+                        .header(API_KEY_HEADER, API_KEY_VALUE))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.httpStatus").value(400));
+    }
+
+    @Test
+    void deberiaRetornar401SinApiKeyNoRetornar500() throws Exception {
+        mockMvc.perform(get("/polizas"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.httpStatus").value(401));
+    }
+
+    @Test
+    void deberiaRetornar409AlCancelarPolizaYaCancelada() throws Exception {
+        when(policyService.cancelPolicy(POLICY_ID))
+                .thenThrow(new BusinessException("Policy is already cancelled", HttpStatus.CONFLICT));
+
+        mockMvc.perform(post("/polizas/" + POLICY_ID + "/cancelar")
+                        .header(API_KEY_HEADER, API_KEY_VALUE))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.httpStatus").value(409));
+    }
+
+    @Test
+    void deberiaRetornar409AlAgregarRiesgoAPolizaCancelada() throws Exception {
+        when(riskService.addRisk(eq(POLICY_ID), any(AgregarRiskRequest.class)))
+                .thenThrow(new BusinessException("Cannot add risks to a policy that is not active", HttpStatus.CONFLICT));
+
+        mockMvc.perform(post("/polizas/" + POLICY_ID + "/riesgos")
+                        .header(API_KEY_HEADER, API_KEY_VALUE)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(
+                                AgregarRiskRequest.builder().insuredId(INSURED_ID).address("Calle 100 # 9-67, Bogotá").build())))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.httpStatus").value(409));
     }
 
     private PolicyResponse polizaResponse() {

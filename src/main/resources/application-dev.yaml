@@ -1,0 +1,7 @@
+spring:
+  h2:
+    console:
+      enabled: true
+
+app:
+  api-key: 123456

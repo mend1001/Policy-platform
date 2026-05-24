@@ -8,6 +8,7 @@ import com.segurosbolivar.polizas.service.CoreMockService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
@@ -21,12 +22,12 @@ public class CoreMockServiceImpl implements CoreMockService {
     private final IntegrationEventRepository integrationEventRepository;
 
     @Override
-    public void enviarEvento(CoreEventRequest request) {
-        log.info("Evento enviado al CORE: evento={}, polizaId={}", request.getEvento(), request.getPolizaId());
+    public void sendEvent(CoreEventRequest request) {
+        log.info("Evento enviado al CORE: evento={}, polizaId={}", request.getEvent(), request.getPolicyId());
     }
 
     @Override
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void notifyCore(Policy policy, String eventType) {
         IntegrationEvent event = IntegrationEvent.builder()
                 .policy(policy)

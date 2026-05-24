@@ -1,6 +1,7 @@
 package com.segurosbolivar.polizas.controller;
 
 import com.segurosbolivar.polizas.config.AppProperties;
+import com.segurosbolivar.polizas.dto.response.ApiMessages;
 import com.segurosbolivar.polizas.dto.request.CoreEventRequest;
 import com.segurosbolivar.polizas.service.CoreMockService;
 import org.junit.jupiter.api.BeforeEach;
@@ -11,6 +12,8 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import tools.jackson.databind.ObjectMapper;
+
+import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doNothing;
@@ -24,6 +27,7 @@ class CoreMockControllerTest {
 
     private static final String API_KEY_HEADER = "x-api-key";
     private static final String API_KEY_VALUE  = "123456";
+    private static final UUID POLICY_UUID = UUID.fromString("550e8400-e29b-41d4-a716-446655440001");
 
     @Autowired
     private MockMvc mockMvc;
@@ -44,11 +48,11 @@ class CoreMockControllerTest {
 
     @Test
     void deberiaRegistrarEventoEnCore() throws Exception {
-        doNothing().when(coreMockService).enviarEvento(any(CoreEventRequest.class));
+        doNothing().when(coreMockService).sendEvent(any(CoreEventRequest.class));
 
         CoreEventRequest request = CoreEventRequest.builder()
-                .evento("ACTUALIZACION")
-                .polizaId("550e8400-e29b-41d4-a716-446655440001")
+                .event("ACTUALIZACION")
+                .policyId(POLICY_UUID)
                 .build();
 
         mockMvc.perform(post("/core-mock/evento")
@@ -56,19 +60,22 @@ class CoreMockControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.mensaje").value("Evento registrado en CORE"));
+                .andExpect(jsonPath("$.httpStatus").value(200))
+                .andExpect(jsonPath("$.message").value(ApiMessages.CORE_NOTIFIED))
+                .andExpect(jsonPath("$.timestamp").exists());
     }
 
     @Test
     void deberiaRetornar401SinApiKey() throws Exception {
         CoreEventRequest request = CoreEventRequest.builder()
-                .evento("ACTUALIZACION")
-                .polizaId("550e8400-e29b-41d4-a716-446655440001")
+                .event("ACTUALIZACION")
+                .policyId(POLICY_UUID)
                 .build();
 
         mockMvc.perform(post("/core-mock/evento")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isUnauthorized());
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.httpStatus").value(401));
     }
 }

@@ -2,18 +2,22 @@ package com.segurosbolivar.polizas.service;
 
 import com.segurosbolivar.polizas.dto.request.RenovarPolicyRequest;
 import com.segurosbolivar.polizas.dto.response.PolicyResponse;
-import com.segurosbolivar.polizas.dto.response.RiskResponse;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
-import java.util.List;
 import java.util.UUID;
 
 public interface PolicyService {
 
-    List<PolicyResponse> listarPolizas(String tipo, String estado);
+    Page<PolicyResponse> listPolicies(String tipo, String estado, Pageable pageable);
 
-    List<RiskResponse> listarRiesgos(UUID polizaId);
+    PolicyResponse findById(UUID id);
 
-    PolicyResponse renovarPoliza(UUID polizaId, RenovarPolicyRequest request);
+    Page<PolicyResponse> findByBeneficiary(UUID beneficiaryId, Pageable pageable);
 
-    PolicyResponse cancelarPoliza(UUID polizaId);
+    Page<PolicyResponse> findByHolder(UUID holderId, Pageable pageable);
+
+    PolicyResponse renewPolicy(UUID polizaId, RenovarPolicyRequest request);
+
+    PolicyResponse cancelPolicy(UUID polizaId);
 }

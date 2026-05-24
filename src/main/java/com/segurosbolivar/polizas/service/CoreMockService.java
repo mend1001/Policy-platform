@@ -5,7 +5,7 @@ import com.segurosbolivar.polizas.model.Policy;
 
 public interface CoreMockService {
 
-    void enviarEvento(CoreEventRequest request);
+    void sendEvent(CoreEventRequest request);
 
     void notifyCore(Policy policy, String eventType);
 }

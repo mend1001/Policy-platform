@@ -2,7 +2,6 @@ package com.segurosbolivar.polizas.service;
 
 import com.segurosbolivar.polizas.dto.request.RenovarPolicyRequest;
 import com.segurosbolivar.polizas.dto.response.PolicyResponse;
-import com.segurosbolivar.polizas.dto.response.RiskResponse;
 import com.segurosbolivar.polizas.exception.BusinessException;
 import com.segurosbolivar.polizas.exception.ResourceNotFoundException;
 import com.segurosbolivar.polizas.model.Notification;
@@ -20,12 +19,17 @@ import com.segurosbolivar.polizas.repository.catalog.PolicyStateRepository;
 import com.segurosbolivar.polizas.repository.catalog.RiskStateRepository;
 import com.segurosbolivar.polizas.service.impl.PolicyServiceImpl;
 import com.segurosbolivar.polizas.service.validation.PolicyValidationStrategy;
-import com.segurosbolivar.polizas.service.validation.impl.RenovarPolicyValidation;
+import com.segurosbolivar.polizas.service.validation.impl.RenewPolicyValidation;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -66,7 +70,7 @@ class PolicyServiceImplTest {
 
     @BeforeEach
     void setUp() {
-        renovarPolicyValidation = new RenovarPolicyValidation();
+        renovarPolicyValidation = new RenewPolicyValidation();
         policyService = new PolicyServiceImpl(
                 policyRepository, policyStateRepository, riskStateRepository,
                 renewalRepository, notificationRepository, coreMockService, renovarPolicyValidation);
@@ -74,66 +78,99 @@ class PolicyServiceImplTest {
 
     @Test
     void deberiaListarTodasLasPolizasSinFiltros() {
+        Pageable pageable = PageRequest.of(0, 10);
         List<Policy> policies = List.of(polizaActivaIndividual(), polizaActivaColectiva());
-        when(policyRepository.findAll()).thenReturn(policies);
+        when(policyRepository.findAll(pageable)).thenReturn(new PageImpl<>(policies));
 
-        List<PolicyResponse> result = policyService.listarPolizas(null, null);
+        Page<PolicyResponse> result = policyService.listPolicies(null, null, pageable);
 
-        assertThat(result).hasSize(2);
-        verify(policyRepository).findAll();
+        assertThat(result.getContent()).hasSize(2);
+        verify(policyRepository).findAll(pageable);
     }
 
     @Test
     void deberiaListarPolizasFiltrandoPorTipo() {
-        when(policyRepository.findByType_Name("INDIVIDUAL")).thenReturn(List.of(polizaActivaIndividual()));
+        Pageable pageable = PageRequest.of(0, 10);
+        when(policyRepository.findByType_Name("INDIVIDUAL", pageable))
+                .thenReturn(new PageImpl<>(List.of(polizaActivaIndividual())));
 
-        List<PolicyResponse> result = policyService.listarPolizas("INDIVIDUAL", null);
+        Page<PolicyResponse> result = policyService.listPolicies("INDIVIDUAL", null, pageable);
 
-        assertThat(result).hasSize(1);
-        assertThat(result.get(0).getType()).isEqualTo("INDIVIDUAL");
-        verify(policyRepository).findByType_Name("INDIVIDUAL");
+        assertThat(result.getContent()).hasSize(1);
+        assertThat(result.getContent().get(0).getType()).isEqualTo("INDIVIDUAL");
+        verify(policyRepository).findByType_Name("INDIVIDUAL", pageable);
     }
 
     @Test
     void deberiaListarPolizasFiltrandoPorEstado() {
-        when(policyRepository.findByState_Name("ACTIVA")).thenReturn(List.of(polizaActivaIndividual()));
+        Pageable pageable = PageRequest.of(0, 10);
+        when(policyRepository.findByState_Name("ACTIVA", pageable))
+                .thenReturn(new PageImpl<>(List.of(polizaActivaIndividual())));
 
-        List<PolicyResponse> result = policyService.listarPolizas(null, "ACTIVA");
+        Page<PolicyResponse> result = policyService.listPolicies(null, "ACTIVA", pageable);
 
-        assertThat(result).hasSize(1);
-        assertThat(result.get(0).getState()).isEqualTo("ACTIVA");
-        verify(policyRepository).findByState_Name("ACTIVA");
+        assertThat(result.getContent()).hasSize(1);
+        assertThat(result.getContent().get(0).getState()).isEqualTo("ACTIVA");
+        verify(policyRepository).findByState_Name("ACTIVA", pageable);
     }
 
     @Test
     void deberiaListarPolizasFiltrandoPorTipoYEstado() {
-        when(policyRepository.findByType_NameAndState_Name("COLECTIVA", "ACTIVA"))
-                .thenReturn(List.of(polizaActivaColectiva()));
+        Pageable pageable = PageRequest.of(0, 10);
+        when(policyRepository.findByType_NameAndState_Name("COLECTIVA", "ACTIVA", pageable))
+                .thenReturn(new PageImpl<>(List.of(polizaActivaColectiva())));
 
-        List<PolicyResponse> result = policyService.listarPolizas("COLECTIVA", "ACTIVA");
+        Page<PolicyResponse> result = policyService.listPolicies("COLECTIVA", "ACTIVA", pageable);
 
-        assertThat(result).hasSize(1);
-        verify(policyRepository).findByType_NameAndState_Name("COLECTIVA", "ACTIVA");
+        assertThat(result.getContent()).hasSize(1);
+        verify(policyRepository).findByType_NameAndState_Name("COLECTIVA", "ACTIVA", pageable);
     }
 
     @Test
-    void deberiaListarRiesgosDeLaPoliza() {
+    void deberiaEncontrarPolizaPorId() {
         UUID id = UUID.randomUUID();
-        Policy policy = polizaActivaColectivaConRiesgos(id);
+        Policy policy = polizaActivaIndividual(id);
         when(policyRepository.findById(id)).thenReturn(Optional.of(policy));
 
-        List<RiskResponse> result = policyService.listarRiesgos(id);
+        PolicyResponse result = policyService.findById(id);
 
-        assertThat(result).hasSize(2);
+        assertThat(result.getId()).isEqualTo(id);
+        assertThat(result.getType()).isEqualTo("INDIVIDUAL");
     }
 
     @Test
-    void deberiaLanzarExcepcionAlListarRiesgosDePolicyInexistente() {
+    void deberiaLanzarExcepcionAlBuscarPolizaInexistente() {
         UUID id = UUID.randomUUID();
         when(policyRepository.findById(id)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> policyService.listarRiesgos(id))
+        assertThatThrownBy(() -> policyService.findById(id))
                 .isInstanceOf(ResourceNotFoundException.class);
+    }
+
+    @Test
+    void deberiaListarPolizasPorBeneficiario() {
+        UUID benefId = UUID.randomUUID();
+        Pageable pageable = PageRequest.of(0, 10);
+        when(policyRepository.findByBeneficiary_Id(benefId, pageable))
+                .thenReturn(new PageImpl<>(List.of(polizaActivaIndividual())));
+
+        Page<PolicyResponse> result = policyService.findByBeneficiary(benefId, pageable);
+
+        assertThat(result.getContent()).hasSize(1);
+        verify(policyRepository).findByBeneficiary_Id(benefId, pageable);
+    }
+
+    @Test
+    void deberiaListarPolizasPorTomador() {
+        UUID holderId = UUID.randomUUID();
+        Pageable pageable = PageRequest.of(0, 10);
+        when(policyRepository.findByHolder_Id(holderId, pageable))
+                .thenReturn(new PageImpl<>(List.of(polizaActivaColectiva())));
+
+        Page<PolicyResponse> result = policyService.findByHolder(holderId, pageable);
+
+        assertThat(result.getContent()).hasSize(1);
+        verify(policyRepository).findByHolder_Id(holderId, pageable);
     }
 
     @Test
@@ -147,8 +184,8 @@ class PolicyServiceImplTest {
         when(policyStateRepository.findByName("RENOVADA")).thenReturn(Optional.of(renovadaState));
         when(policyRepository.save(any(Policy.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        RenovarPolicyRequest request = new RenovarPolicyRequest(0.09);
-        PolicyResponse result = policyService.renovarPoliza(id, request);
+        RenovarPolicyRequest request = new RenovarPolicyRequest(new BigDecimal("0.09"));
+        PolicyResponse result = policyService.renewPolicy(id, request);
 
         assertThat(result.getState()).isEqualTo("RENOVADA");
         assertThat(result.getCanon()).isGreaterThan(canonOriginal);
@@ -161,9 +198,9 @@ class PolicyServiceImplTest {
         Policy policy = polizaCancelada(id);
         when(policyRepository.findById(id)).thenReturn(Optional.of(policy));
 
-        RenovarPolicyRequest request = new RenovarPolicyRequest(0.09);
+        RenovarPolicyRequest request = new RenovarPolicyRequest(new BigDecimal("0.09"));
 
-        assertThatThrownBy(() -> policyService.renovarPoliza(id, request))
+        assertThatThrownBy(() -> policyService.renewPolicy(id, request))
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("cancelada");
 
@@ -183,7 +220,7 @@ class PolicyServiceImplTest {
         when(policyStateRepository.findByName("CANCELADA")).thenReturn(Optional.of(canceladaState));
         when(policyRepository.save(any(Policy.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        PolicyResponse result = policyService.cancelarPoliza(id);
+        PolicyResponse result = policyService.cancelPolicy(id);
 
         assertThat(result.getState()).isEqualTo("CANCELADA");
         assertThat(policy.getRisks()).allMatch(r -> "CANCELADO".equals(r.getState().getName()));
@@ -199,7 +236,7 @@ class PolicyServiceImplTest {
         when(policyStateRepository.findByName("RENOVADA")).thenReturn(Optional.of(estadoPoliza("RENOVADA")));
         when(policyRepository.save(any(Policy.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        policyService.renovarPoliza(id, new RenovarPolicyRequest(0.05));
+        policyService.renewPolicy(id, new RenovarPolicyRequest(new BigDecimal("0.05")));
 
         verify(renewalRepository).save(any(Renewal.class));
     }
@@ -213,7 +250,7 @@ class PolicyServiceImplTest {
         when(policyStateRepository.findByName("RENOVADA")).thenReturn(Optional.of(estadoPoliza("RENOVADA")));
         when(policyRepository.save(any(Policy.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        policyService.renovarPoliza(id, new RenovarPolicyRequest(0.05));
+        policyService.renewPolicy(id, new RenovarPolicyRequest(new BigDecimal("0.05")));
 
         verify(notificationRepository).save(any(Notification.class));
     }
@@ -228,7 +265,7 @@ class PolicyServiceImplTest {
         when(policyStateRepository.findByName("CANCELADA")).thenReturn(Optional.of(estadoPoliza("CANCELADA")));
         when(policyRepository.save(any(Policy.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        policyService.cancelarPoliza(id);
+        policyService.cancelPolicy(id);
 
         verify(notificationRepository).save(any(Notification.class));
     }
@@ -238,7 +275,7 @@ class PolicyServiceImplTest {
         UUID id = UUID.randomUUID();
         when(policyRepository.findById(id)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> policyService.cancelarPoliza(id))
+        assertThatThrownBy(() -> policyService.cancelPolicy(id))
                 .isInstanceOf(ResourceNotFoundException.class);
     }
 
@@ -336,5 +373,50 @@ class PolicyServiceImplTest {
                 .endDate(LocalDate.of(2025, 1, 1))
                 .risks(new ArrayList<>())
                 .build();
+    }
+
+    private Policy polizaCanceladaColectiva(UUID id) {
+        return Policy.builder()
+                .id(id)
+                .type(tipoPolitica("COLECTIVA"))
+                .state(estadoPoliza("CANCELADA"))
+                .holder(usuario())
+                .beneficiary(usuario())
+                .canon(new BigDecimal("3500000.00"))
+                .premium(new BigDecimal("84000000.00"))
+                .months(24)
+                .startDate(LocalDate.of(2024, 1, 1))
+                .endDate(LocalDate.of(2026, 1, 1))
+                .risks(new ArrayList<>())
+                .build();
+    }
+
+    @Test
+    void deberiaLanzar409AlCancelarPolizaYaCancelada() {
+        UUID id = UUID.randomUUID();
+        Policy policy = polizaCancelada(id);
+        when(policyRepository.findById(id)).thenReturn(Optional.of(policy));
+
+        assertThatThrownBy(() -> policyService.cancelPolicy(id))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("already cancelled");
+
+        verify(policyRepository, never()).save(any());
+    }
+
+    @Test
+    void deberiaActualizarFechasAlRenovarPoliza() {
+        UUID id = UUID.randomUUID();
+        Policy policy = polizaActivaIndividual(id);
+        LocalDate endDateAntes = policy.getEndDate();
+
+        when(policyRepository.findById(id)).thenReturn(Optional.of(policy));
+        when(policyStateRepository.findByName("RENOVADA")).thenReturn(Optional.of(estadoPoliza("RENOVADA")));
+        when(policyRepository.save(any(Policy.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        policyService.renewPolicy(id, new RenovarPolicyRequest(new BigDecimal("0.09")));
+
+        assertThat(policy.getStartDate()).isEqualTo(endDateAntes.plusDays(1));
+        assertThat(policy.getEndDate()).isEqualTo(endDateAntes.plusDays(1).plusMonths(policy.getMonths()));
     }
 }
